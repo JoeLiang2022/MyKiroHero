@@ -143,14 +143,12 @@ const i18n = {
         done: '安裝完成！',
         installPath: '安裝路徑',
         nextSteps: '下一步:',
-        next1: '用 Kiro 開啟資料夾',
-        next2: '在終端機執行: node src/gateway/index.js',
-        next3: '用手機掃描 QR Code 登入 WhatsApp',
-        next4: '開始和你的 AI 助手對話！',
-        startPrompt: '是否立即啟動 Gateway? (y/N): ',
-        starting: '啟動 Gateway...',
-        startNote: '（首次啟動會顯示 QR Code，請用手機掃描）',
-        startFailed: '啟動失敗',
+        next1: '用手機掃描 QR Code 登入 WhatsApp',
+        next2: '開始和你的 AI 助手對話！',
+        openKiro: '正在開啟 Kiro...',
+        openKiroNote: '（Gateway 會自動啟動，請等待 QR Code 出現）',
+        openKiroFailed: '無法自動開啟 Kiro，請手動開啟',
+        openKiroManual: '手動開啟: kiro',
         installFailed: '安裝失敗',
     },
     en: {
@@ -185,14 +183,12 @@ const i18n = {
         done: 'Installation complete!',
         installPath: 'Install path',
         nextSteps: 'Next steps:',
-        next1: 'Open folder in Kiro',
-        next2: 'Run in terminal: node src/gateway/index.js',
-        next3: 'Scan QR Code with phone to login WhatsApp',
-        next4: 'Start chatting with your AI assistant!',
-        startPrompt: 'Start Gateway now? (y/N): ',
-        starting: 'Starting Gateway...',
-        startNote: '(First run will show QR Code, scan with phone)',
-        startFailed: 'Start failed',
+        next1: 'Scan QR Code with phone to login WhatsApp',
+        next2: 'Start chatting with your AI assistant!',
+        openKiro: 'Opening Kiro...',
+        openKiroNote: '(Gateway will auto-start, wait for QR Code)',
+        openKiroFailed: 'Could not auto-open Kiro, please open manually',
+        openKiroManual: 'Manual open: kiro',
         installFailed: 'Installation failed',
     }
 };
@@ -553,33 +549,30 @@ IDE_REST_PORT=55139
         }
 
         log(t.nextSteps, 'yellow');
-        log(`  1. ${t.next1}: ${installPath}`, 'white');
+        log(`  1. ${t.next1}`, 'white');
         log(`  2. ${t.next2}`, 'white');
-        log(`  3. ${t.next3}`, 'white');
-        log(`  4. ${t.next4}`, 'white');
         console.log('');
 
-        // 詢問是否立即啟動（測試模式跳過）
-        const startNow = await ask(rl, t.startPrompt, 'n');
-        
-        if (startNow.toLowerCase() === 'y' && !isTestMode) {
+        // 自動開啟 Kiro（如果有 Kiro CLI）
+        if (kiroCli) {
             console.log('');
-            log(t.starting, 'cyan');
-            log(t.startNote, 'yellow');
+            log(t.openKiro, 'cyan');
+            log(t.openKiroNote, 'yellow');
             console.log('');
             
             rl.close();
             
-            // 啟動 Gateway（不等待結束）
-            const gateway = spawn('node', ['src/gateway/index.js'], {
-                cwd: installPath,
-                stdio: 'inherit'
+            // 用 spawn 開啟 Kiro（不等待結束）
+            const kiroProcess = spawn(kiroCli, [installPath], {
+                detached: true,
+                stdio: 'ignore'
             });
+            kiroProcess.unref();
             
-            gateway.on('error', (err) => {
-                log(`${t.startFailed}: ${err.message}`, 'red');
-            });
+            log(`  ✓ Kiro opened: ${installPath}`, 'green');
         } else {
+            log(`  ! ${t.openKiroFailed}`, 'yellow');
+            log(`  ${t.openKiroManual} "${installPath}"`, 'yellow');
             rl.close();
         }
 
