@@ -7,7 +7,8 @@ require('dotenv').config();
 const MessageGateway = require('./server');
 const WhatsAppAdapter = require('./whatsapp-adapter');
 const TelegramAdapter = require('./telegram-adapter');
-const kiroRestHandler = require('./handlers/kiro-cli-handler');
+const { createLegacyHandler } = require('./handlers');
+const ideHandler = createLegacyHandler();
 
 // 全局錯誤處理 - 防止程式崩潰
 process.on('uncaughtException', (err) => {
@@ -52,8 +53,8 @@ async function main() {
         console.log('-'.repeat(40));
     });
 
-    // 註冊 Kiro REST API 處理器
-    gateway.registerHandler('kiro-rest', kiroRestHandler);
+    // 註冊 IDE handler（根據 config.ideType 自動選擇）
+    gateway.registerHandler('ide', ideHandler);
 
     // 啟動 Gateway Server
     gateway.start();
