@@ -1,0 +1,62 @@
+/**
+ * Kiro REST API Handler
+ * 收到 WhatsApp 訊息後，用 vscode-rest-control extension 送到 Kiro chat
+ * 
+ * 需要安裝 vscode-rest-control extension:
+ * https://github.com/dpar39/vscode-rest-control
+ */
+
+const http = require('http');
+
+// REST Control extension port (從環境變數或預設值)
+const KIRO_REST_PORT = process.env.KIRO_REST_PORT || 55139;
+
+function sendToKiroChat(message) {
+    return new Promise((resolve, reject) => {
+        const args = encodeURIComponent(JSON.stringify([message]));
+        const url = `/?command=kiroAgent.sendMainUserInput&args=${args}`;
+        
+        const options = {
+            hostname: '127.0.0.1',
+            port: KIRO_REST_PORT,
+            path: url,
+            method: 'GET',
+            timeout: 10000
+        };
+
+        const req = http.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve(data));
+        });
+
+        req.on('error', reject);
+        req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
+        });
+
+        req.end();
+    });
+}
+
+module.exports = async function kiroRestHandler(message, gateway) {
+    // 跳過空訊息
+    if (!message.text || message.text.trim() === '') return;
+    
+    // 跳過 Kiro 的回覆（避免無限迴圈）
+    if (message.text.startsWith('[Kiro]')) return;
+
+    console.log(`[KiroREST] 準備送到 Kiro: ${message.text}`);
+
+    // 組合訊息 - 格式讓 Kiro 知道這是 WhatsApp 來的
+    const prompt = `[WhatsApp] ${message.sender}: ${message.text} (chatId: ${message.chatId})`;
+
+    try {
+        await sendToKiroChat(prompt);
+        console.log(`[KiroREST] ✓ 已送到 Kiro chat (port ${KIRO_REST_PORT})`);
+    } catch (error) {
+        console.error(`[KiroREST] ✗ 發送失敗: ${error.message}`);
+        console.error(`[KiroREST] 請確認 Kiro 已開啟且 vscode-rest-control extension 正在運行`);
+    }
+};
