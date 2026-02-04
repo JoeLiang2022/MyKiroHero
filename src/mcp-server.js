@@ -10,8 +10,36 @@ const {
     CallToolRequestSchema,
     ListToolsRequestSchema,
 } = require('@modelcontextprotocol/sdk/types.js');
+const fs = require('fs');
+const path = require('path');
 
-const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:3000';
+// 動態取得 Gateway URL
+function getGatewayUrl() {
+    // 優先使用環境變數
+    if (process.env.GATEWAY_URL) {
+        return process.env.GATEWAY_URL;
+    }
+    
+    // 嘗試從 port 檔案讀取
+    const portFile = path.join(__dirname, 'gateway/.gateway-port');
+    const altPortFile = path.join(__dirname, '../.gateway-port');
+    
+    for (const file of [portFile, altPortFile]) {
+        try {
+            if (fs.existsSync(file)) {
+                const port = fs.readFileSync(file, 'utf-8').trim();
+                if (port && !isNaN(port)) {
+                    return `http://localhost:${port}`;
+                }
+            }
+        } catch (err) {
+            // ignore
+        }
+    }
+    
+    // 預設
+    return 'http://localhost:3000';
+}
 
 // 建立 MCP Server
 const server = new Server(
@@ -85,6 +113,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 // 處理 tool 呼叫
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+    const GATEWAY_URL = getGatewayUrl();
 
     try {
         switch (name) {

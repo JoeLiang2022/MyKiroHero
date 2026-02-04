@@ -18,7 +18,8 @@ module.exports = {
     aiPrefix: process.env.AI_PREFIX || '*[AI Assistant]* 🤖',
     
     // Gateway server port
-    serverPort: process.env.GATEWAY_PORT || 3000,
+    // 設為 'auto' 或 0 讓系統自動分配空閒 port
+    serverPort: process.env.GATEWAY_PORT === 'auto' ? 'auto' : (parseInt(process.env.GATEWAY_PORT) || 3000),
     
     // 訊息分段設定
     message: {

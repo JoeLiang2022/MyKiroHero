@@ -8,7 +8,11 @@ const http = require('http');
 const WebSocket = require('ws');
 const EventEmitter = require('events');
 const fs = require('fs');
+const path = require('path');
 const config = require('./config');
+
+// Port 檔案路徑（讓 MCP Server 知道實際 port）
+const PORT_FILE = path.join(__dirname, '../../.gateway-port');
 
 class MessageGateway extends EventEmitter {
     constructor(port = config.serverPort) {
@@ -435,9 +439,24 @@ class MessageGateway extends EventEmitter {
     }
 
     start() {
-        this.server.listen(this.port, () => {
-            console.log(`[Gateway] Server running on http://localhost:${this.port}`);
-            console.log(`[Gateway] WebSocket on ws://localhost:${this.port}`);
+        // 支援 port 0（系統自動分配）
+        const requestedPort = this.port === 'auto' ? 0 : this.port;
+        
+        this.server.listen(requestedPort, () => {
+            // 取得實際分配的 port
+            const actualPort = this.server.address().port;
+            this.port = actualPort;
+            
+            // 寫入 port 檔案，讓 MCP Server 可以讀取
+            try {
+                fs.writeFileSync(PORT_FILE, actualPort.toString(), 'utf-8');
+                console.log(`[Gateway] Port 已寫入 ${PORT_FILE}`);
+            } catch (err) {
+                console.error(`[Gateway] 無法寫入 port 檔案:`, err.message);
+            }
+            
+            console.log(`[Gateway] Server running on http://localhost:${actualPort}`);
+            console.log(`[Gateway] WebSocket on ws://localhost:${actualPort}`);
             console.log(`[Gateway] REST API:`);
             console.log(`  GET  /api/messages      - 取得所有待處理訊息`);
             console.log(`  GET  /api/messages/next - 取得下一則訊息`);
@@ -448,8 +467,33 @@ class MessageGateway extends EventEmitter {
             // 啟動動態 heartbeat 排程
             this.setupDynamicHeartbeat();
             this.startScheduleWatcher();
+            
+            // 發出 ready 事件
+            this.emit('ready', actualPort);
         });
+        
+        // 優雅關閉時清理 port 檔案
+        const cleanup = () => {
+            try {
+                if (fs.existsSync(PORT_FILE)) {
+                    fs.unlinkSync(PORT_FILE);
+                    console.log(`[Gateway] Port 檔案已清理`);
+                }
+            } catch (err) {
+                // ignore
+            }
+            this.stopSchedules();
+        };
+        
+        process.on('SIGINT', cleanup);
+        process.on('SIGTERM', cleanup);
+    }
+    
+    // 取得實際運行的 port
+    getPort() {
+        return this.port;
     }
 }
+
 
 module.exports = MessageGateway;
