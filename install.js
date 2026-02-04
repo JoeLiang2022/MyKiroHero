@@ -4,7 +4,8 @@
  * 支援 Windows / Mac / Linux
  * 
  * 用法：
- *   node install.js
+ *   node install.js          # 正常安裝（互動式）
+ *   node install.js --test   # 自動測試模式
  *   或
  *   npx mykiro-hero (未來發布到 npm 後)
  */
@@ -13,6 +14,9 @@ const fs = require('fs');
 const path = require('path');
 const { execSync, spawn } = require('child_process');
 const readline = require('readline');
+
+// 測試模式
+const isTestMode = process.argv.includes('--test');
 
 // 平台偵測
 const isWindows = process.platform === 'win32';
@@ -45,7 +49,12 @@ function createPrompt() {
     });
 }
 
-async function ask(rl, question) {
+async function ask(rl, question, defaultValue = '') {
+    // 測試模式：自動使用預設值
+    if (isTestMode) {
+        log(`  [TEST] Auto answer: "${defaultValue}"`, 'yellow');
+        return defaultValue;
+    }
     return new Promise(resolve => {
         rl.question(question, answer => resolve(answer.trim()));
     });
@@ -200,14 +209,19 @@ async function main() {
     log('╚══════════════════════════════════════════════════════════════╝', 'cyan');
     console.log('');
 
+    if (isTestMode) {
+        log('🧪 TEST MODE - 自動測試模式', 'yellow');
+        console.log('');
+    }
+
     const platform = isWindows ? 'Windows' : isMac ? 'macOS' : 'Linux';
     log(`Platform / 平台: ${platform}`, 'yellow');
     console.log('');
 
     const rl = createPrompt();
     
-    // 選擇語言
-    const langChoice = await ask(rl, 'Choose language / 選擇語言:\n  1. 繁體中文\n  2. English\nEnter / 請輸入 (1/2): ');
+    // 選擇語言（測試模式預設繁中）
+    const langChoice = await ask(rl, 'Choose language / 選擇語言:\n  1. 繁體中文\n  2. English\nEnter / 請輸入 (1/2): ', '1');
     const lang = langChoice === '2' ? 'en' : 'zh';
     const t = i18n[lang];
     console.log('');
@@ -218,12 +232,17 @@ async function main() {
         // Step 1: 設定安裝路徑
         logStep(1, totalSteps, t.step1);
         
-        const defaultPath = isWindows 
+        // 測試模式使用臨時目錄
+        const testPath = isWindows 
+            ? path.join(process.env.TEMP || 'C:\\Temp', 'mykiro-test-' + Date.now())
+            : path.join('/tmp', 'mykiro-test-' + Date.now());
+        
+        const defaultPath = isTestMode ? testPath : (isWindows 
             ? path.join(process.env.LOCALAPPDATA || '', 'MyKiroHero')
-            : path.join(process.env.HOME || '', '.mykiro-hero');
+            : path.join(process.env.HOME || '', '.mykiro-hero'));
         
         log(`${t.defaultPath}: ${defaultPath}`, 'yellow');
-        const customPath = await ask(rl, t.pathPrompt);
+        const customPath = await ask(rl, t.pathPrompt, '');
         const installPath = customPath || defaultPath;
         console.log('');
 
@@ -271,10 +290,12 @@ async function main() {
         log(`  ✓ ${t.depsDone}`, 'green');
         console.log('');
 
-        // Step 5: 安裝 Extension
+        // Step 5: 安裝 Extension（測試模式跳過下載）
         logStep(5, totalSteps, t.step5);
         
-        if (kiroCli) {
+        if (isTestMode) {
+            log(`  [TEST] Skipping extension download`, 'yellow');
+        } else if (kiroCli) {
             const vsixUrl = 'https://github.com/dpar39/vscode-rest-control/releases/download/v0.0.18/vscode-rest-control-0.0.18.vsix';
             const vsixPath = path.join(installPath, 'vscode-rest-control-0.0.18.vsix');
             
@@ -427,6 +448,98 @@ IDE_REST_PORT=55139
         console.log('');
         log(`${t.installPath}: ${installPath}`, 'cyan');
         console.log('');
+
+        // 測試模式：驗證安裝結果
+        if (isTestMode) {
+            console.log('');
+            log('🧪 TEST VERIFICATION - 驗證安裝結果', 'cyan');
+            console.log('');
+            
+            let testPassed = true;
+            const requiredFiles = [
+                '.env',
+                '.kiro/steering/IDENTITY.md',
+                '.kiro/steering/SOUL.md',
+                '.kiro/steering/USER.md',
+                '.kiro/steering/MEMORY.md',
+                '.kiro/steering/AGENTS.md',
+                '.kiro/steering/HEARTBEAT.md',
+                '.kiro/steering/ONBOARDING.md',
+                '.kiro/settings/mcp.json',
+                '.vscode/tasks.json',
+                'src/gateway/index.js',
+                'src/gateway/server.js',
+                'src/mcp-server.js',
+                'package.json'
+            ];
+            
+            for (const file of requiredFiles) {
+                const filePath = path.join(installPath, file);
+                if (fs.existsSync(filePath)) {
+                    log(`  ✓ ${file}`, 'green');
+                } else {
+                    log(`  ✗ ${file} (MISSING)`, 'red');
+                    testPassed = false;
+                }
+            }
+            
+            // 驗證 .env 內容
+            console.log('');
+            log('  Checking .env content...', 'cyan');
+            const envContent = fs.readFileSync(path.join(installPath, '.env'), 'utf-8');
+            const envChecks = ['AI_PREFIX', 'GATEWAY_PORT', 'HEARTBEAT_PATH', 'STEERING_PATH'];
+            for (const key of envChecks) {
+                if (envContent.includes(key)) {
+                    log(`    ✓ ${key} found`, 'green');
+                } else {
+                    log(`    ✗ ${key} missing`, 'red');
+                    testPassed = false;
+                }
+            }
+            
+            // 驗證 steering 檔案沒有個人資訊
+            console.log('');
+            log('  Checking for personal info leaks...', 'cyan');
+            const sensitivePatterns = [/886953870991/, /NorlWu(?!-TW)/, /叫小賀/];
+            const steeringFiles = fs.readdirSync(steeringPath).filter(f => f.endsWith('.md'));
+            
+            for (const file of steeringFiles) {
+                const content = fs.readFileSync(path.join(steeringPath, file), 'utf-8');
+                let hasLeak = false;
+                for (const pattern of sensitivePatterns) {
+                    if (pattern.test(content)) {
+                        log(`    ✗ ${file} contains sensitive info: ${pattern}`, 'red');
+                        hasLeak = true;
+                        testPassed = false;
+                    }
+                }
+                if (!hasLeak) {
+                    log(`    ✓ ${file} clean`, 'green');
+                }
+            }
+            
+            console.log('');
+            if (testPassed) {
+                log('╔══════════════════════════════════════════════════════════════╗', 'green');
+                log('║  🎉 ALL TESTS PASSED!                                        ║', 'green');
+                log('╚══════════════════════════════════════════════════════════════╝', 'green');
+            } else {
+                log('╔══════════════════════════════════════════════════════════════╗', 'red');
+                log('║  ❌ SOME TESTS FAILED!                                       ║', 'red');
+                log('╚══════════════════════════════════════════════════════════════╝', 'red');
+                process.exit(1);
+            }
+            
+            // 清理測試目錄
+            console.log('');
+            log('  Cleaning up test directory...', 'yellow');
+            fs.rmSync(installPath, { recursive: true, force: true });
+            log(`  ✓ Removed ${installPath}`, 'green');
+            
+            rl.close();
+            return;
+        }
+
         log(t.nextSteps, 'yellow');
         log(`  1. ${t.next1}: ${installPath}`, 'white');
         log(`  2. ${t.next2}`, 'white');
@@ -434,10 +547,10 @@ IDE_REST_PORT=55139
         log(`  4. ${t.next4}`, 'white');
         console.log('');
 
-        // 詢問是否立即啟動
-        const startNow = await ask(rl, t.startPrompt);
+        // 詢問是否立即啟動（測試模式跳過）
+        const startNow = await ask(rl, t.startPrompt, 'n');
         
-        if (startNow.toLowerCase() === 'y') {
+        if (startNow.toLowerCase() === 'y' && !isTestMode) {
             console.log('');
             log(t.starting, 'cyan');
             log(t.startNote, 'yellow');
