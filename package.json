@@ -1,7 +1,7 @@
 {
-  "name": "terminal-messenger",
+  "name": "mykiro-gateway",
   "version": "1.0.0",
-  "description": "Terminal-based messenger receiver for WhatsApp and Telegram",
+  "description": "AI-powered WhatsApp/Telegram gateway for Kiro and other AI tools",
   "main": "index.js",
   "scripts": {
     "whatsapp": "node src/whatsapp/client.js",

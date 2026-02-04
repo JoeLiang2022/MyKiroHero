@@ -526,6 +526,7 @@ $mcpContent = @"
       "disabled": false,
       "autoApprove": [
         "send_whatsapp",
+        "send_whatsapp_media",
         "get_gateway_status"
       ]
     }

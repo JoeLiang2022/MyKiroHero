@@ -8,7 +8,6 @@ const http = require('http');
 const WebSocket = require('ws');
 const EventEmitter = require('events');
 const fs = require('fs');
-const path = require('path');
 const config = require('./config');
 
 class MessageGateway extends EventEmitter {
@@ -389,10 +388,32 @@ class MessageGateway extends EventEmitter {
 
     // 定期重新載入排程（每小時檢查一次）
     startScheduleWatcher() {
-        setInterval(() => {
+        // 清除舊的 watcher（如果有）
+        if (this.scheduleWatcherInterval) {
+            clearInterval(this.scheduleWatcherInterval);
+        }
+        
+        this.scheduleWatcherInterval = setInterval(() => {
             console.log(`[Heartbeat] 重新載入排程...`);
             this.setupDynamicHeartbeat();
         }, 60 * 60 * 1000); // 每小時
+    }
+
+    // 停止所有排程（用於優雅關閉）
+    stopSchedules() {
+        // 清除 heartbeat timers
+        if (this.heartbeatTimers) {
+            this.heartbeatTimers.forEach(timer => clearTimeout(timer));
+            this.heartbeatTimers = [];
+        }
+        
+        // 清除 schedule watcher
+        if (this.scheduleWatcherInterval) {
+            clearInterval(this.scheduleWatcherInterval);
+            this.scheduleWatcherInterval = null;
+        }
+        
+        console.log('[Heartbeat] 所有排程已停止');
     }
 
     // 觸發 heartbeat（發送訊息給 Kiro）

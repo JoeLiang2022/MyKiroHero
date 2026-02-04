@@ -1,6 +1,9 @@
 # USER.md - About Your Human
 
-- **Name:** (填入使用者名稱)
-- **What to call them:** (填入稱呼)
+<!-- 這個檔案會在 onboarding 完成後自動更新 -->
+
+- **Name:** (待設定)
+- **What to call them:** (待設定)
+- **Timezone:** (待設定)
 - **Notes:** 
-  - (填入使用者相關資訊)
+  - (待設定)

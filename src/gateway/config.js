@@ -34,7 +34,10 @@ module.exports = {
     // Heartbeat 設定檔路徑
     // 預設：專案根目錄的 HEARTBEAT.md
     // Kiro 使用者可設為 .kiro/steering/HEARTBEAT.md
-    heartbeatPath: process.env.HEARTBEAT_PATH || path.join(__dirname, '../../HEARTBEAT.md'),
+    // 支援相對路徑（從 cwd 解析）和絕對路徑
+    heartbeatPath: process.env.HEARTBEAT_PATH 
+        ? path.resolve(process.env.HEARTBEAT_PATH)
+        : path.join(__dirname, '../../HEARTBEAT.md'),
 
     // ============================================================
     // IDE 專屬設定（透過環境變數配置）
@@ -53,5 +56,8 @@ module.exports = {
     // Steering 檔案路徑（AI 人格設定）
     // Kiro: .kiro/steering/
     // 其他: 可自訂
-    steeringPath: process.env.STEERING_PATH || path.join(__dirname, '../../.kiro/steering')
+    // 支援相對路徑（從 cwd 解析）和絕對路徑
+    steeringPath: process.env.STEERING_PATH
+        ? path.resolve(process.env.STEERING_PATH)
+        : path.join(__dirname, '../../.kiro/steering')
 };

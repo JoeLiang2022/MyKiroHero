@@ -7,6 +7,7 @@ require('dotenv').config();
 const MessageGateway = require('./server');
 const WhatsAppAdapter = require('./whatsapp-adapter');
 const TelegramAdapter = require('./telegram-adapter');
+const config = require('./config');
 const { createLegacyHandler } = require('./handlers');
 const ideHandler = createLegacyHandler();
 
@@ -39,8 +40,8 @@ console.log(colors.cyan + `
 ` + colors.reset);
 
 async function main() {
-    // 建立 Gateway
-    const gateway = new MessageGateway(3000);
+    // 建立 Gateway（使用 config 的 port）
+    const gateway = new MessageGateway(config.serverPort);
 
     // 監聽所有訊息（在終端顯示）
     gateway.on('message', (msg) => {
