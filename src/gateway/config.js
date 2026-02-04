@@ -3,6 +3,8 @@
  * 使用者可以在這裡自訂設定
  */
 
+const path = require('path');
+
 module.exports = {
     // AI 回覆的前綴（用來識別 AI 發的訊息，避免迴圈）
     // 格式：*[名字]* emoji
@@ -23,5 +25,8 @@ module.exports = {
     },
     
     // 錯誤通知：Kiro 沒回應時自動通知使用者（true/false）
-    errorNotification: true
+    errorNotification: true,
+    
+    // Heartbeat 設定檔路徑（HEARTBEAT.md）
+    heartbeatPath: process.env.HEARTBEAT_PATH || path.join(__dirname, '../../../.kiro/steering/HEARTBEAT.md')
 };

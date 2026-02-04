@@ -7,6 +7,8 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const EventEmitter = require('events');
+const fs = require('fs');
+const path = require('path');
 const config = require('./config');
 
 class MessageGateway extends EventEmitter {
@@ -280,28 +282,104 @@ class MessageGateway extends EventEmitter {
         console.log(`[Gateway] ${platform} client registered`);
     }
 
-    // 設定每日 heartbeat（預設凌晨 4 點）
-    setupDailyHeartbeat(hour = 4, minute = 0) {
+    // 從 HEARTBEAT.md 讀取排程設定
+    readHeartbeatSchedules() {
+        const heartbeatPath = config.heartbeatPath || path.join(__dirname, '../../.kiro/steering/HEARTBEAT.md');
+        
+        try {
+            if (!fs.existsSync(heartbeatPath)) {
+                console.log(`[Heartbeat] HEARTBEAT.md 不存在: ${heartbeatPath}`);
+                return [];
+            }
+            
+            const content = fs.readFileSync(heartbeatPath, 'utf-8');
+            
+            // 找 ```...``` 區塊內的時間
+            const match = content.match(/## 排程 \(schedules\)\s*```([\s\S]*?)```/);
+            if (!match) {
+                console.log(`[Heartbeat] 找不到排程區塊`);
+                return [];
+            }
+            
+            const schedules = match[1]
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => /^\d{2}:\d{2}$/.test(line))
+                .map(time => {
+                    const [hour, minute] = time.split(':').map(Number);
+                    return { hour, minute, time };
+                });
+            
+            return schedules;
+        } catch (err) {
+            console.error(`[Heartbeat] 讀取排程失敗:`, err.message);
+            return [];
+        }
+    }
+
+    // 設定動態 heartbeat 排程
+    setupDynamicHeartbeat() {
+        this.heartbeatTimers = this.heartbeatTimers || [];
+        
+        // 清除舊的 timers 和活躍排程記錄
+        this.heartbeatTimers.forEach(timer => clearTimeout(timer));
+        this.heartbeatTimers = [];
+        this.activeSchedules = new Set();
+        
+        const schedules = this.readHeartbeatSchedules();
+        
+        if (schedules.length === 0) {
+            console.log(`[Heartbeat] 沒有設定排程`);
+            return;
+        }
+        
+        console.log(`[Heartbeat] 載入 ${schedules.length} 個排程: ${schedules.map(s => s.time).join(', ')}`);
+        
+        schedules.forEach(schedule => {
+            this.scheduleHeartbeat(schedule.hour, schedule.minute);
+        });
+    }
+
+    // 排程單一 heartbeat
+    scheduleHeartbeat(hour, minute) {
+        const key = `${hour}:${minute}`;
+        
         const scheduleNext = () => {
             const now = new Date();
             const next = new Date();
             next.setHours(hour, minute, 0, 0);
             
-            // 如果今天的時間已過，排到明天
             if (next <= now) {
                 next.setDate(next.getDate() + 1);
             }
             
             const delay = next - now;
-            console.log(`[Gateway] 下次 heartbeat: ${next.toLocaleString('zh-TW')}`);
+            console.log(`[Heartbeat] 下次 ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} → ${next.toLocaleString('zh-TW')}`);
             
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 this.triggerHeartbeat();
-                scheduleNext(); // 排下一次
+                // 只有當這個排程還存在時才繼續
+                if (this.activeSchedules && this.activeSchedules.has(key)) {
+                    scheduleNext();
+                }
             }, delay);
+            
+            this.heartbeatTimers.push(timer);
         };
         
+        // 記錄活躍的排程
+        this.activeSchedules = this.activeSchedules || new Set();
+        this.activeSchedules.add(key);
+        
         scheduleNext();
+    }
+
+    // 定期重新載入排程（每小時檢查一次）
+    startScheduleWatcher() {
+        setInterval(() => {
+            console.log(`[Heartbeat] 重新載入排程...`);
+            this.setupDynamicHeartbeat();
+        }, 60 * 60 * 1000); // 每小時
     }
 
     // 觸發 heartbeat（發送訊息給 Kiro）
@@ -332,8 +410,9 @@ class MessageGateway extends EventEmitter {
             console.log(`  POST /api/reply/media   - 發送媒體檔案`);
             console.log(`  GET  /api/health        - 健康檢查`);
             
-            // 啟動每日 heartbeat（凌晨 4 點）
-            this.setupDailyHeartbeat(4, 0);
+            // 啟動動態 heartbeat 排程
+            this.setupDynamicHeartbeat();
+            this.startScheduleWatcher();
         });
     }
 }
