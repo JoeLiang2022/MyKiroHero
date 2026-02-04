@@ -221,7 +221,13 @@ async function main() {
     const rl = createPrompt();
     
     // 選擇語言（測試模式預設繁中）
-    const langChoice = await ask(rl, 'Choose language / 選擇語言:\n  1. 繁體中文\n  2. English\nEnter / 請輸入 (1/2): ', '1');
+    let langChoice;
+    if (isTestMode) {
+        log(`  [TEST] Auto selecting: 繁體中文`, 'yellow');
+        langChoice = '1';
+    } else {
+        langChoice = await ask(rl, 'Choose language / 選擇語言:\n  1. 繁體中文\n  2. English\nEnter / 請輸入 (1/2): ', '1');
+    }
     const lang = langChoice === '2' ? 'en' : 'zh';
     const t = i18n[lang];
     console.log('');
@@ -242,8 +248,14 @@ async function main() {
             : path.join(process.env.HOME || '', '.mykiro-hero'));
         
         log(`${t.defaultPath}: ${defaultPath}`, 'yellow');
-        const customPath = await ask(rl, t.pathPrompt, '');
-        const installPath = customPath || defaultPath;
+        let installPath;
+        if (isTestMode) {
+            log(`  [TEST] Using test path: ${defaultPath}`, 'yellow');
+            installPath = defaultPath;
+        } else {
+            const customPath = await ask(rl, t.pathPrompt, '');
+            installPath = customPath || defaultPath;
+        }
         console.log('');
 
         // Step 2: 檢查必要工具
