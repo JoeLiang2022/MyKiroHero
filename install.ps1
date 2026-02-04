@@ -115,66 +115,162 @@ Write-Host ""
 
 $setupMemory = Read-Host "是否設定記憶備份? (y/N)"
 if ($setupMemory -eq "y" -or $setupMemory -eq "Y") {
+    
+    # 檢查 Git credential
     Write-Host ""
-    Write-Host "  請先在 GitHub 建立一個 repo 來存放記憶" -ForegroundColor Yellow
-    Write-Host "  例如: https://github.com/你的帳號/Moltbot" -ForegroundColor Yellow
+    Write-Host "  檢查 Git 認證設定..." -ForegroundColor Yellow
+    
+    $credentialHelper = git config --global credential.helper 2>$null
+    $hasCredential = $false
+    
+    if ($credentialHelper) {
+        Write-Host "  ✓ Git credential helper: $credentialHelper" -ForegroundColor Green
+        $hasCredential = $true
+    } else {
+        Write-Host "  ! 未偵測到 Git credential helper" -ForegroundColor Yellow
+    }
+    
+    # 提供認證選項
+    Write-Host ""
+    Write-Host "  請選擇 GitHub 認證方式:" -ForegroundColor Cyan
+    Write-Host "  [1] 使用現有的 Git credential（已登入 GitHub Desktop 或 git credential manager）" -ForegroundColor White
+    Write-Host "  [2] 使用 GitHub Personal Access Token (PAT)" -ForegroundColor White
+    Write-Host "  [3] 稍後手動設定" -ForegroundColor White
     Write-Host ""
     
-    $memoryRepo = Read-Host "輸入 GitHub repo URL (例如 https://github.com/username/repo)"
+    $authChoice = Read-Host "請選擇 (1/2/3)"
     
-    if ($memoryRepo) {
-        # 取得 Kiro workspace 路徑
-        $kiroWorkspace = Read-Host "輸入 Kiro workspace 路徑 (預設: $installPath)"
-        if (-not $kiroWorkspace) { $kiroWorkspace = $installPath }
-        
-        $steeringPath = "$kiroWorkspace\.kiro\steering"
-        
-        # 建立 .kiro/steering 目錄
-        if (-not (Test-Path $steeringPath)) {
-            New-Item -ItemType Directory -Path $steeringPath -Force | Out-Null
+    $canProceed = $false
+    $repoUrlToUse = $null
+    
+    switch ($authChoice) {
+        "1" {
+            if ($hasCredential) {
+                Write-Host "  ✓ 將使用現有的 Git credential" -ForegroundColor Green
+                $canProceed = $true
+            } else {
+                Write-Host ""
+                Write-Host "  ⚠ 未偵測到 Git credential，你可能需要先設定：" -ForegroundColor Yellow
+                Write-Host "    方法 1: 安裝 GitHub Desktop (會自動設定)" -ForegroundColor White
+                Write-Host "    方法 2: 執行 'git config --global credential.helper manager'" -ForegroundColor White
+                Write-Host "    方法 3: 下次 git push 時會跳出登入視窗" -ForegroundColor White
+                Write-Host ""
+                $continueAnyway = Read-Host "是否繼續? (y/N)"
+                if ($continueAnyway -eq "y" -or $continueAnyway -eq "Y") {
+                    $canProceed = $true
+                }
+            }
         }
-        
-        # Clone 記憶 repo 到 steering 目錄
+        "2" {
+            Write-Host ""
+            Write-Host "  請到 GitHub 建立 Personal Access Token:" -ForegroundColor Yellow
+            Write-Host "  https://github.com/settings/tokens/new" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "  需要的權限: repo (Full control of private repositories)" -ForegroundColor White
+            Write-Host ""
+            
+            $pat = Read-Host "貼上你的 GitHub PAT"
+            
+            if ($pat) {
+                # 設定 Git credential 使用 PAT
+                Write-Host "  設定 Git credential..." -ForegroundColor Yellow
+                
+                # 取得 GitHub username
+                $githubUser = Read-Host "輸入你的 GitHub 帳號"
+                
+                if ($githubUser) {
+                    # 儲存 credential（使用 git credential store 或 manager）
+                    $credentialInput = "protocol=https`nhost=github.com`nusername=$githubUser`npassword=$pat`n"
+                    $credentialInput | git credential approve 2>$null
+                    
+                    Write-Host "  ✓ GitHub PAT 已設定" -ForegroundColor Green
+                    $canProceed = $true
+                } else {
+                    Write-Host "  ✗ 需要 GitHub 帳號" -ForegroundColor Red
+                }
+            } else {
+                Write-Host "  ✗ 需要 PAT" -ForegroundColor Red
+            }
+        }
+        "3" {
+            Write-Host "  跳過認證設定，稍後請手動設定 Git credential" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "  設定方法:" -ForegroundColor White
+            Write-Host "    1. 安裝 GitHub Desktop，或" -ForegroundColor White
+            Write-Host "    2. 執行 git push 時會跳出登入視窗" -ForegroundColor White
+            $canProceed = $true
+        }
+        default {
+            Write-Host "  跳過記憶備份設定" -ForegroundColor Yellow
+        }
+    }
+    
+    if ($canProceed) {
         Write-Host ""
-        Write-Host "  Clone 記憶庫到 $steeringPath ..." -ForegroundColor Yellow
-        
-        # 如果目錄已有內容，先備份
-        if ((Get-ChildItem $steeringPath -Force | Measure-Object).Count -gt 0) {
-            Write-Host "  ! steering 目錄已有內容，備份中..." -ForegroundColor Yellow
-            $backupPath = "$steeringPath.backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-            Move-Item $steeringPath $backupPath
-            New-Item -ItemType Directory -Path $steeringPath -Force | Out-Null
-        }
-        
-        Push-Location (Split-Path $steeringPath -Parent)
-        git clone $memoryRepo steering 2>$null
-        Pop-Location
-        
-        if (Test-Path "$steeringPath\SOUL.md") {
-            Write-Host "  ✓ 記憶庫設定完成！" -ForegroundColor Green
-        } else {
-            Write-Host "  ! Clone 完成，但找不到 SOUL.md" -ForegroundColor Yellow
-            Write-Host "  可能是新的 repo，需要手動建立記憶檔案" -ForegroundColor Yellow
-        }
-        
-        # 更新 config.js 的 heartbeatPath
-        $configPath = "$installPath\src\gateway\config.js"
-        $heartbeatPath = "$steeringPath\HEARTBEAT.md" -replace '\\', '/'
-        
+        Write-Host "  請先在 GitHub 建立一個 repo 來存放記憶" -ForegroundColor Yellow
+        Write-Host "  例如: https://github.com/你的帳號/Moltbot" -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "  更新 heartbeatPath 設定..." -ForegroundColor Yellow
         
-        # 寫入 .env 檔案
-        $envPath = "$installPath\.env"
-        $envContent = @"
+        $memoryRepo = Read-Host "輸入 GitHub repo URL (例如 https://github.com/username/repo)"
+        
+        if ($memoryRepo) {
+            # 取得 Kiro workspace 路徑
+            $kiroWorkspace = Read-Host "輸入 Kiro workspace 路徑 (預設: $installPath)"
+            if (-not $kiroWorkspace) { $kiroWorkspace = $installPath }
+            
+            $steeringPath = "$kiroWorkspace\.kiro\steering"
+            
+            # 建立 .kiro/steering 目錄
+            if (-not (Test-Path $steeringPath)) {
+                New-Item -ItemType Directory -Path $steeringPath -Force | Out-Null
+            }
+            
+            # Clone 記憶 repo 到 steering 目錄
+            Write-Host ""
+            Write-Host "  Clone 記憶庫到 $steeringPath ..." -ForegroundColor Yellow
+            
+            # 如果目錄已有內容，先備份
+            if ((Get-ChildItem $steeringPath -Force | Measure-Object).Count -gt 0) {
+                Write-Host "  ! steering 目錄已有內容，備份中..." -ForegroundColor Yellow
+                $backupPath = "$steeringPath.backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+                Move-Item $steeringPath $backupPath
+                New-Item -ItemType Directory -Path $steeringPath -Force | Out-Null
+            }
+            
+            Push-Location (Split-Path $steeringPath -Parent)
+            $cloneResult = git clone $memoryRepo steering 2>&1
+            Pop-Location
+            
+            if ($LASTEXITCODE -eq 0) {
+                if (Test-Path "$steeringPath\SOUL.md") {
+                    Write-Host "  ✓ 記憶庫設定完成！" -ForegroundColor Green
+                } else {
+                    Write-Host "  ✓ Clone 完成" -ForegroundColor Green
+                    Write-Host "  ! 找不到 SOUL.md，可能是新的 repo" -ForegroundColor Yellow
+                    Write-Host "  需要手動建立記憶檔案（SOUL.md, MEMORY.md 等）" -ForegroundColor Yellow
+                }
+                
+                # 更新 heartbeatPath 設定
+                $heartbeatPath = "$steeringPath\HEARTBEAT.md" -replace '\\', '/'
+                
+                Write-Host ""
+                Write-Host "  更新 heartbeatPath 設定..." -ForegroundColor Yellow
+                
+                # 寫入 .env 檔案
+                $envPath = "$installPath\.env"
+                $envContent = @"
 # MyKiroHero 環境設定
 HEARTBEAT_PATH=$heartbeatPath
 "@
-        $envContent | Out-File -FilePath $envPath -Encoding utf8
-        Write-Host "  ✓ 已寫入 .env" -ForegroundColor Green
-        
-    } else {
-        Write-Host "  跳過記憶備份設定" -ForegroundColor Yellow
+                $envContent | Out-File -FilePath $envPath -Encoding utf8
+                Write-Host "  ✓ 已寫入 .env" -ForegroundColor Green
+            } else {
+                Write-Host "  ✗ Clone 失敗: $cloneResult" -ForegroundColor Red
+                Write-Host "  請檢查 repo URL 和認證設定" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "  跳過記憶備份設定" -ForegroundColor Yellow
+        }
     }
 } else {
     Write-Host "  跳過記憶備份設定" -ForegroundColor Yellow
