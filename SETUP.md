@@ -3,7 +3,7 @@
 ## 系統架構
 
 ```
-WhatsApp 訊息 → Gateway (Node.js) → REST API → Kiro chat → 叫小賀回覆 → API → WhatsApp
+WhatsApp 訊息 → Gateway (Node.js) → REST API → Kiro chat → AI 回覆 → API → WhatsApp
 ```
 
 ## 前置需求
@@ -86,7 +86,7 @@ GET http://127.0.0.1:55139/?command=kiroAgent.sendMainUserInput&args=["訊息內
 ```powershell
 $body = @{
     platform = "whatsapp"
-    chatId = "886953870991@c.us"
+    chatId = "886912345678@c.us"
     message = "你的回覆"
 } | ConvertTo-Json
 
@@ -103,11 +103,11 @@ Invoke-RestMethod -Uri "http://localhost:3000/api/health"
 
 ### 進來的訊息
 ```
-[WhatsApp] 使用者名稱: 訊息內容 (chatId: 886953870991@c.us)
+[WhatsApp] 使用者名稱: 訊息內容 (chatId: 886912345678@c.us)
 ```
 
 ### 回覆格式
-回覆會自動加上前綴：`*[叫小賀]* 🤪`
+回覆會自動加上前綴（依 .env 設定，例如 `*[AI Assistant]* 🤖`）
 
 ## 故障排除
 

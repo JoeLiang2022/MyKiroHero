@@ -22,7 +22,7 @@
 - 使用者可自訂
 
 ### Step 4: 設定精靈
-- AI 名稱（預設：叫小賀）
+- AI 名稱（預設：AI Assistant）
 - AI Emoji（預設：🤪）
 - Kiro workspace 路徑
 - 是否開機自動啟動？
@@ -78,7 +78,7 @@ MyKiroHero/
 ### 目前
 ```javascript
 module.exports = {
-    aiPrefix: '*[叫小賀]* 🤪',  // 寫死
+    aiPrefix: '*[AI Assistant]* 🤖',  // 寫死
     kiroRestPort: 55139,
     // ...
 };
@@ -91,8 +91,8 @@ const fs = require('fs');
 
 // 預設設定
 const defaults = {
-    aiName: '叫小賀',
-    aiEmoji: '🤪',
+    aiName: 'AI Assistant',
+    aiEmoji: '🤖',
     kiroRestPort: process.env.KIRO_REST_PORT || 55139,
     serverPort: process.env.GATEWAY_PORT || 3000,
     message: {

@@ -38,7 +38,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     properties: {
                         chatId: {
                             type: 'string',
-                            description: 'WhatsApp chat ID (例如: 886953870991@c.us)',
+                            description: 'WhatsApp chat ID (例如: 886912345678@c.us)',
                         },
                         message: {
                             type: 'string',
