@@ -1,51 +1,67 @@
 # MyKiroHero 🤖
 
-**讓 Kiro AI 成為你的 WhatsApp 助手**
+**Turn Kiro AI into your WhatsApp assistant / 讓 Kiro AI 成為你的 WhatsApp 助手**
+
+Chat with Kiro IDE's AI through WhatsApp - fully automated, no extra AI API key needed.
 
 透過 WhatsApp 與 Kiro IDE 的 AI 對話，完全自動化、不需要額外 AI API key。
 
-## ✨ 功能
+## ✨ Features / 功能
 
-- 📱 **WhatsApp 整合** - 收發 WhatsApp 訊息
-- 🖼️ **媒體傳送** - 支援圖片、影片、文件傳送
-- 🤖 **Kiro AI 回覆** - 使用 Kiro 內建的 AI 處理對話
-- 🔄 **完全自動化** - 訊息自動轉發，不需人工介入
-- 💓 **Heartbeat 排程** - 定時任務自動執行（記憶同步、提醒等）
-- 🎭 **自訂 AI 人格** - 透過對話設定 AI 的名字、風格、個性
-- 💪 **RDP 友善** - 斷線後仍可運作，不需要 GUI 權限
+- 📱 **WhatsApp Integration** - Send & receive WhatsApp messages
+- 🖼️ **Media Support** - Images, videos, documents
+- 🤖 **Kiro AI Replies** - Uses Kiro's built-in AI
+- 🔄 **Fully Automated** - Auto-forward messages, no manual intervention
+- 💓 **Heartbeat Schedules** - Automated tasks (memory sync, reminders)
+- 🎭 **Custom AI Personality** - Set AI name, style, personality through chat
+- 💪 **RDP Friendly** - Works after disconnect, no GUI needed
+- 🌐 **Multi-language** - English & Traditional Chinese support
 
-## 🚀 快速開始
+## 🚀 Quick Start / 快速開始
 
-### 1. 安裝
+### 1. Install / 安裝
 
-**方法 A - 跨平台（推薦）：**
+**Cross-platform (Recommended) / 跨平台（推薦）：**
 ```bash
 git clone https://github.com/NorlWu-TW/MyKiroHero.git
 cd MyKiroHero
 node install.js
 ```
 
-**方法 B - Windows PowerShell：**
+The installer will ask you to choose a language (English or 繁體中文).
+
+安裝程式會詢問你選擇語言（English 或 繁體中文）。
+
+**Windows PowerShell:**
 ```powershell
 irm https://raw.githubusercontent.com/NorlWu-TW/MyKiroHero/main/install.ps1 | iex
 ```
 
-### 2. 啟動 Gateway
+### 2. Start Gateway / 啟動 Gateway
 
-```powershell
+```bash
 node src/gateway/index.js
 ```
 
-### 3. 掃描 QR Code
+### 3. Scan QR Code / 掃描 QR Code
+
+First launch shows WhatsApp QR code - scan with your phone.
 
 首次啟動會顯示 WhatsApp QR code，用手機掃描登入。
 
-### 4. 開始對話！
+### 4. Start Chatting! / 開始對話！
+
+The AI will greet you via WhatsApp and guide you through setup:
+- Your name and nickname
+- AI's name and emoji
+- AI's style (professional/chatty/concise/funny)
 
 AI 會主動透過 WhatsApp 跟你打招呼，引導你完成設定：
 - 你的名字和稱呼
 - AI 的名字和 emoji
 - AI 的風格（專業/活潑/簡潔/搞笑）
+
+**No manual file editing needed - just chat with the AI!**
 
 **不需要手動編輯任何檔案，跟 AI 聊天就能完成設定！**
 
