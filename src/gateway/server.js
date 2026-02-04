@@ -280,6 +280,47 @@ class MessageGateway extends EventEmitter {
         console.log(`[Gateway] ${platform} client registered`);
     }
 
+    // 設定每日 heartbeat（預設凌晨 4 點）
+    setupDailyHeartbeat(hour = 4, minute = 0) {
+        const scheduleNext = () => {
+            const now = new Date();
+            const next = new Date();
+            next.setHours(hour, minute, 0, 0);
+            
+            // 如果今天的時間已過，排到明天
+            if (next <= now) {
+                next.setDate(next.getDate() + 1);
+            }
+            
+            const delay = next - now;
+            console.log(`[Gateway] 下次 heartbeat: ${next.toLocaleString('zh-TW')}`);
+            
+            setTimeout(() => {
+                this.triggerHeartbeat();
+                scheduleNext(); // 排下一次
+            }, delay);
+        };
+        
+        scheduleNext();
+    }
+
+    // 觸發 heartbeat（發送訊息給 Kiro）
+    async triggerHeartbeat() {
+        console.log(`[Gateway] 🫀 Heartbeat triggered at ${new Date().toLocaleString('zh-TW')}`);
+        
+        const heartbeatMessage = {
+            platform: 'system',
+            type: 'heartbeat',
+            from: 'Gateway',
+            body: 'Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.',
+            chatId: 'system',
+            timestamp: new Date().toISOString()
+        };
+        
+        // 透過 kiro-cli-handler 發送到 Kiro
+        this.receiveMessage('system', heartbeatMessage);
+    }
+
     start() {
         this.server.listen(this.port, () => {
             console.log(`[Gateway] Server running on http://localhost:${this.port}`);
@@ -290,6 +331,9 @@ class MessageGateway extends EventEmitter {
             console.log(`  POST /api/reply         - 發送文字回覆`);
             console.log(`  POST /api/reply/media   - 發送媒體檔案`);
             console.log(`  GET  /api/health        - 健康檢查`);
+            
+            // 啟動每日 heartbeat（凌晨 4 點）
+            this.setupDailyHeartbeat(4, 0);
         });
     }
 }

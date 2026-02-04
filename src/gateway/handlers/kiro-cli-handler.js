@@ -42,6 +42,21 @@ function sendToKiroChat(message) {
 }
 
 module.exports = async function kiroRestHandler(message, gateway) {
+    // 處理 system heartbeat 訊息
+    if (message.platform === 'system' && message.type === 'heartbeat') {
+        console.log(`[KiroREST] 🫀 收到 heartbeat，送到 Kiro...`);
+        
+        const prompt = `[Heartbeat] ${message.body}`;
+        
+        try {
+            await sendToKiroChat(prompt);
+            console.log(`[KiroREST] ✓ Heartbeat 已送到 Kiro chat`);
+        } catch (error) {
+            console.error(`[KiroREST] ✗ Heartbeat 發送失敗: ${error.message}`);
+        }
+        return;
+    }
+    
     // 跳過空訊息
     if (!message.text || message.text.trim() === '') return;
     
