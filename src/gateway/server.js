@@ -7,9 +7,10 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const EventEmitter = require('events');
+const config = require('./config');
 
 class MessageGateway extends EventEmitter {
-    constructor(port = 3000) {
+    constructor(port = config.serverPort) {
         super();
         this.port = port;
         this.app = express();
@@ -134,17 +135,89 @@ class MessageGateway extends EventEmitter {
         return enrichedMessage;
     }
 
-    // 發送回覆
+    // 智慧分段：在段落、句號、換行處切割
+    splitMessage(text, maxLength) {
+        if (text.length <= maxLength) {
+            return [text];
+        }
+
+        const parts = [];
+        let remaining = text;
+
+        while (remaining.length > 0) {
+            if (remaining.length <= maxLength) {
+                parts.push(remaining);
+                break;
+            }
+
+            // 找最佳切割點（優先順序：段落 > 換行 > 句號 > 空格）
+            let splitIndex = maxLength;
+            const searchArea = remaining.substring(0, maxLength);
+            
+            // 找最後一個段落分隔（兩個換行）
+            const paragraphIndex = searchArea.lastIndexOf('\n\n');
+            if (paragraphIndex > maxLength * 0.5) {
+                splitIndex = paragraphIndex + 2;
+            } else {
+                // 找最後一個換行
+                const newlineIndex = searchArea.lastIndexOf('\n');
+                if (newlineIndex > maxLength * 0.5) {
+                    splitIndex = newlineIndex + 1;
+                } else {
+                    // 找最後一個句號（中文或英文）
+                    const periodIndex = Math.max(
+                        searchArea.lastIndexOf('。'),
+                        searchArea.lastIndexOf('. ')
+                    );
+                    if (periodIndex > maxLength * 0.3) {
+                        splitIndex = periodIndex + 1;
+                    } else {
+                        // 找最後一個空格
+                        const spaceIndex = searchArea.lastIndexOf(' ');
+                        if (spaceIndex > maxLength * 0.3) {
+                            splitIndex = spaceIndex + 1;
+                        }
+                    }
+                }
+            }
+
+            parts.push(remaining.substring(0, splitIndex).trim());
+            remaining = remaining.substring(splitIndex).trim();
+        }
+
+        return parts;
+    }
+
+    // 發送回覆（支援自動分段）
     async sendReply(platform, chatId, message, replyToMessageId = null) {
         const client = this.clients[platform];
         if (!client) {
             throw new Error(`${platform} client not connected`);
         }
 
-        // 自動加上叫小賀的標識（粗體 + emoji）
-        const prefixedMessage = `*[叫小賀]* 🤪 ${message}`;
+        // 自動加上 AI 標識前綴
+        const prefixedMessage = `${config.aiPrefix} ${message}`;
         
-        return client.sendMessage(chatId, prefixedMessage, replyToMessageId);
+        // 檢查是否需要分段
+        const maxLength = config.message?.maxLength || 1500;
+        const parts = this.splitMessage(prefixedMessage, maxLength);
+        
+        if (parts.length === 1) {
+            return client.sendMessage(chatId, parts[0], replyToMessageId);
+        }
+
+        // 分段發送（所有段落都加標記）
+        const delay = config.message?.splitDelay || 500;
+        for (let i = 0; i < parts.length; i++) {
+            const part = `(${i + 1}/${parts.length}) ${parts[i]}`;
+            await client.sendMessage(chatId, part, i === 0 ? replyToMessageId : null);
+            
+            if (i < parts.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        
+        return { sent: parts.length, parts };
     }
 
     // 註冊訊息處理器

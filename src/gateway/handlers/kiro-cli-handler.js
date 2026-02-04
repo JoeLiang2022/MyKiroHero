@@ -7,9 +7,10 @@
  */
 
 const http = require('http');
+const config = require('../config');
 
-// REST Control extension port (從環境變數或預設值)
-const KIRO_REST_PORT = process.env.KIRO_REST_PORT || 55139;
+// REST Control extension port
+const KIRO_REST_PORT = config.kiroRestPort;
 
 function sendToKiroChat(message) {
     return new Promise((resolve, reject) => {
@@ -44,8 +45,16 @@ module.exports = async function kiroRestHandler(message, gateway) {
     // 跳過空訊息
     if (!message.text || message.text.trim() === '') return;
     
-    // 跳過 Kiro 的回覆（避免無限迴圈）
-    if (message.text.startsWith('[Kiro]')) return;
+    // 只處理主人自己發的訊息（fromMe = 登入 WhatsApp 的帳號）
+    // 別人傳來的訊息不處理
+    if (!message.fromMe) {
+        return;
+    }
+    
+    // 跳過 AI 的回覆（避免迴圈）
+    if (message.text.startsWith(config.aiPrefix.split(' ')[0])) {
+        return;
+    }
 
     console.log(`[KiroREST] 準備送到 Kiro: ${message.text}`);
 
@@ -58,5 +67,18 @@ module.exports = async function kiroRestHandler(message, gateway) {
     } catch (error) {
         console.error(`[KiroREST] ✗ 發送失敗: ${error.message}`);
         console.error(`[KiroREST] 請確認 Kiro 已開啟且 vscode-rest-control extension 正在運行`);
+        
+        // 錯誤通知：告訴使用者訊息沒送到
+        if (config.errorNotification !== false) {
+            try {
+                await gateway.sendReply(
+                    message.platform,
+                    message.chatId,
+                    `⚠️ 訊息轉發失敗：${error.message}\n請確認 Kiro 有開啟。`
+                );
+            } catch (notifyError) {
+                console.error(`[KiroREST] 無法發送錯誤通知: ${notifyError.message}`);
+            }
+        }
     }
 };
