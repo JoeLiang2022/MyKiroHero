@@ -2,8 +2,10 @@
  * WhatsApp Adapter for Gateway
  */
 
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const fs = require('fs');
+const path = require('path');
 
 class WhatsAppAdapter {
     constructor(gateway) {
@@ -74,6 +76,39 @@ class WhatsAppAdapter {
             options.quotedMessageId = replyToMessageId;
         }
         return this.client.sendMessage(chatId, message, options);
+    }
+
+    /**
+     * 發送媒體檔案
+     * @param {string} chatId - 聊天 ID
+     * @param {string} filePath - 檔案路徑（本地路徑或 URL）
+     * @param {string} caption - 檔案說明文字（可選）
+     * @param {string} replyToMessageId - 回覆的訊息 ID（可選）
+     */
+    async sendMedia(chatId, filePath, caption = '', replyToMessageId = null) {
+        let media;
+        
+        // 判斷是 URL 還是本地檔案
+        if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+            // 從 URL 載入
+            console.log(`[WhatsApp] 從 URL 載入媒體: ${filePath}`);
+            media = await MessageMedia.fromUrl(filePath, { unsafeMime: true });
+        } else {
+            // 從本地檔案載入
+            const absolutePath = path.resolve(filePath);
+            if (!fs.existsSync(absolutePath)) {
+                throw new Error(`檔案不存在: ${absolutePath}`);
+            }
+            console.log(`[WhatsApp] 從本地載入媒體: ${absolutePath}`);
+            media = MessageMedia.fromFilePath(absolutePath);
+        }
+        
+        const options = { caption };
+        if (replyToMessageId) {
+            options.quotedMessageId = replyToMessageId;
+        }
+        
+        return this.client.sendMessage(chatId, media, options);
     }
 
     async initialize() {

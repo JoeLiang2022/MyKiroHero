@@ -60,6 +60,25 @@ class MessageGateway extends EventEmitter {
             }
         });
 
+        // 發送媒體檔案
+        this.app.post('/api/reply/media', async (req, res) => {
+            let { platform, chatId, filePath, caption, replyToMessageId } = req.body;
+            
+            // 自動判斷 platform
+            if (!platform) {
+                if (chatId && (chatId.endsWith('@c.us') || chatId.endsWith('@g.us'))) {
+                    platform = 'whatsapp';
+                }
+            }
+            
+            try {
+                await this.sendMedia(platform, chatId, filePath, caption, replyToMessageId);
+                res.json({ success: true });
+            } catch (err) {
+                res.status(500).json({ error: err.message });
+            }
+        });
+
         // 健康檢查
         this.app.get('/api/health', (req, res) => {
             res.json({
@@ -220,6 +239,23 @@ class MessageGateway extends EventEmitter {
         return { sent: parts.length, parts };
     }
 
+    // 發送媒體檔案
+    async sendMedia(platform, chatId, filePath, caption = '', replyToMessageId = null) {
+        const client = this.clients[platform];
+        if (!client) {
+            throw new Error(`${platform} client not connected`);
+        }
+        
+        if (!client.sendMedia) {
+            throw new Error(`${platform} client does not support media`);
+        }
+        
+        // caption 加上 AI 前綴（如果有 caption 的話）
+        const prefixedCaption = caption ? `${config.aiPrefix} ${caption}` : '';
+        
+        return client.sendMedia(chatId, filePath, prefixedCaption, replyToMessageId);
+    }
+
     // 註冊訊息處理器
     registerHandler(name, handler) {
         this.handlers.set(name, handler);
@@ -251,7 +287,8 @@ class MessageGateway extends EventEmitter {
             console.log(`[Gateway] REST API:`);
             console.log(`  GET  /api/messages      - 取得所有待處理訊息`);
             console.log(`  GET  /api/messages/next - 取得下一則訊息`);
-            console.log(`  POST /api/reply         - 發送回覆`);
+            console.log(`  POST /api/reply         - 發送文字回覆`);
+            console.log(`  POST /api/reply/media   - 發送媒體檔案`);
             console.log(`  GET  /api/health        - 健康檢查`);
         });
     }
