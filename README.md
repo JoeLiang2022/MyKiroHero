@@ -38,10 +38,12 @@ irm https://raw.githubusercontent.com/NorlWu-TW/MyKiroHero/main/install.ps1 | ie
 ```
 
 這會自動：
+- 檢查 Node.js 和 Git
 - 下載 MyKiroHero
 - 安裝 Node.js 依賴
 - 安裝 vscode-rest-control extension
-- 建立設定檔
+- 設定 AI 人格檔案（可選擇使用範本或從 GitHub 還原）
+- 建立環境設定檔
 
 ## 📦 手動安裝
 
