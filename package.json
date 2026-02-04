@@ -1,6 +1,6 @@
 {
   "name": "mykiro-gateway",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "AI-powered WhatsApp/Telegram gateway for Kiro and other AI tools",
   "main": "index.js",
   "scripts": {
