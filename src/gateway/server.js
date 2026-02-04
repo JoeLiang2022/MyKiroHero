@@ -294,7 +294,7 @@ class MessageGateway extends EventEmitter {
             
             const content = fs.readFileSync(heartbeatPath, 'utf-8');
             
-            // 找 ```...``` 區塊內的時間
+            // 找 ```...``` 區塊內的時間和任務
             const match = content.match(/## 排程 \(schedules\)\s*```([\s\S]*?)```/);
             if (!match) {
                 console.log(`[Heartbeat] 找不到排程區塊`);
@@ -304,11 +304,19 @@ class MessageGateway extends EventEmitter {
             const schedules = match[1]
                 .split('\n')
                 .map(line => line.trim())
-                .filter(line => /^\d{2}:\d{2}$/.test(line))
-                .map(time => {
-                    const [hour, minute] = time.split(':').map(Number);
-                    return { hour, minute, time };
-                });
+                .filter(line => /^\d{2}:\d{2}/.test(line))
+                .map(line => {
+                    const timeMatch = line.match(/^(\d{2}):(\d{2})\s*(.*)?$/);
+                    if (!timeMatch) return null;
+                    const [, hourStr, minuteStr, task] = timeMatch;
+                    return {
+                        hour: parseInt(hourStr, 10),
+                        minute: parseInt(minuteStr, 10),
+                        time: `${hourStr}:${minuteStr}`,
+                        task: task?.trim() || '執行 HEARTBEAT.md 任務'
+                    };
+                })
+                .filter(Boolean);
             
             return schedules;
         } catch (err) {
@@ -333,15 +341,15 @@ class MessageGateway extends EventEmitter {
             return;
         }
         
-        console.log(`[Heartbeat] 載入 ${schedules.length} 個排程: ${schedules.map(s => s.time).join(', ')}`);
+        console.log(`[Heartbeat] 載入 ${schedules.length} 個排程: ${schedules.map(s => `${s.time} → ${s.task}`).join(', ')}`);
         
         schedules.forEach(schedule => {
-            this.scheduleHeartbeat(schedule.hour, schedule.minute);
+            this.scheduleHeartbeat(schedule.hour, schedule.minute, schedule.task);
         });
     }
 
     // 排程單一 heartbeat
-    scheduleHeartbeat(hour, minute) {
+    scheduleHeartbeat(hour, minute, task) {
         const key = `${hour}:${minute}`;
         
         const scheduleNext = () => {
@@ -354,10 +362,10 @@ class MessageGateway extends EventEmitter {
             }
             
             const delay = next - now;
-            console.log(`[Heartbeat] 下次 ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} → ${next.toLocaleString('zh-TW')}`);
+            console.log(`[Heartbeat] 下次 ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} (${task}) → ${next.toLocaleString('zh-TW')}`);
             
             const timer = setTimeout(() => {
-                this.triggerHeartbeat();
+                this.triggerHeartbeat(task);
                 // 只有當這個排程還存在時才繼續
                 if (this.activeSchedules && this.activeSchedules.has(key)) {
                     scheduleNext();
@@ -383,14 +391,15 @@ class MessageGateway extends EventEmitter {
     }
 
     // 觸發 heartbeat（發送訊息給 Kiro）
-    async triggerHeartbeat() {
-        console.log(`[Gateway] 🫀 Heartbeat triggered at ${new Date().toLocaleString('zh-TW')}`);
+    async triggerHeartbeat(task = '執行 HEARTBEAT.md 任務') {
+        console.log(`[Gateway] 🫀 Heartbeat triggered: ${task} at ${new Date().toLocaleString('zh-TW')}`);
         
         const heartbeatMessage = {
             platform: 'system',
             type: 'heartbeat',
             from: 'Gateway',
-            body: 'Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.',
+            body: `[Heartbeat] 執行任務：${task}`,
+            task: task,
             chatId: 'system',
             timestamp: new Date().toISOString()
         };

@@ -44,9 +44,10 @@ function sendToKiroChat(message) {
 module.exports = async function kiroRestHandler(message, gateway) {
     // 處理 system heartbeat 訊息
     if (message.platform === 'system' && message.type === 'heartbeat') {
-        console.log(`[KiroREST] 🫀 收到 heartbeat，送到 Kiro...`);
+        console.log(`[KiroREST] 🫀 收到 heartbeat: ${message.task || 'unknown'}`);
         
-        const prompt = `[Heartbeat] ${message.body}`;
+        // 直接傳任務名稱，不需要讀整份 HEARTBEAT.md
+        const prompt = `[Heartbeat] 執行任務：${message.task}\n\n請根據 HEARTBEAT.md 中「${message.task}」的說明執行此任務。完成後簡短回報結果。`;
         
         try {
             await sendToKiroChat(prompt);
