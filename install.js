@@ -1,0 +1,369 @@
+#!/usr/bin/env node
+/**
+ * MyKiroHero 跨平台安裝腳本
+ * 支援 Windows / Mac / Linux
+ * 
+ * 用法：
+ *   node install.js
+ *   或
+ *   npx mykiro-hero (未來發布到 npm 後)
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { execSync, spawn } = require('child_process');
+const readline = require('readline');
+
+// 平台偵測
+const isWindows = process.platform === 'win32';
+const isMac = process.platform === 'darwin';
+const isLinux = process.platform === 'linux';
+
+// 顏色輸出
+const colors = {
+    reset: '\x1b[0m',
+    cyan: '\x1b[36m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    red: '\x1b[31m',
+    white: '\x1b[37m',
+};
+
+function log(msg, color = 'white') {
+    console.log(`${colors[color]}${msg}${colors.reset}`);
+}
+
+function logStep(step, total, msg) {
+    log(`[${step}/${total}] ${msg}`, 'cyan');
+}
+
+// 互動式問答
+function createPrompt() {
+    return readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+}
+
+async function ask(rl, question) {
+    return new Promise(resolve => {
+        rl.question(question, answer => resolve(answer.trim()));
+    });
+}
+
+// 執行指令
+function exec(cmd, options = {}) {
+    try {
+        return execSync(cmd, { 
+            encoding: 'utf-8', 
+            stdio: options.silent ? 'pipe' : 'inherit',
+            ...options 
+        });
+    } catch (e) {
+        if (!options.ignoreError) throw e;
+        return null;
+    }
+}
+
+// 檢查指令是否存在
+function commandExists(cmd) {
+    try {
+        if (isWindows) {
+            execSync(`where ${cmd}`, { stdio: 'pipe' });
+        } else {
+            execSync(`which ${cmd}`, { stdio: 'pipe' });
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// 取得 Kiro CLI 路徑
+function getKiroCli() {
+    // 嘗試各種可能的路徑
+    const possiblePaths = isWindows ? [
+        path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Kiro', 'resources', 'app', 'bin', 'kiro.cmd'),
+        path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Kiro', 'bin', 'kiro.cmd'),
+        'kiro'
+    ] : [
+        '/Applications/Kiro.app/Contents/Resources/app/bin/kiro',
+        path.join(process.env.HOME || '', '.local', 'bin', 'kiro'),
+        'kiro'
+    ];
+
+    for (const p of possiblePaths) {
+        if (commandExists(p) || (p !== 'kiro' && fs.existsSync(p))) {
+            return p;
+        }
+    }
+    return null;
+}
+
+// 主安裝流程
+async function main() {
+    console.log('');
+    log('╔══════════════════════════════════════════════════════════════╗', 'cyan');
+    log('║                                                              ║', 'cyan');
+    log('║   🤖 MyKiroHero 安裝程式                                     ║', 'cyan');
+    log('║   讓 Kiro AI 成為你的 WhatsApp 助手                          ║', 'cyan');
+    log('║                                                              ║', 'cyan');
+    log('╚══════════════════════════════════════════════════════════════╝', 'cyan');
+    console.log('');
+
+    const platform = isWindows ? 'Windows' : isMac ? 'macOS' : 'Linux';
+    log(`偵測到平台: ${platform}`, 'yellow');
+    console.log('');
+
+    const rl = createPrompt();
+    const totalSteps = 7;
+
+    try {
+        // Step 1: 設定安裝路徑
+        logStep(1, totalSteps, '設定安裝路徑...');
+        
+        const defaultPath = isWindows 
+            ? path.join(process.env.LOCALAPPDATA || '', 'MyKiroHero')
+            : path.join(process.env.HOME || '', '.mykiro-hero');
+        
+        log(`預設安裝路徑: ${defaultPath}`, 'yellow');
+        const customPath = await ask(rl, '按 Enter 使用預設路徑，或輸入自訂路徑: ');
+        const installPath = customPath || defaultPath;
+        console.log('');
+
+        // Step 2: 檢查必要工具
+        logStep(2, totalSteps, '檢查必要工具...');
+        
+        // 檢查 Node.js（既然能執行這個腳本，一定有）
+        const nodeVersion = process.version;
+        log(`  ✓ Node.js ${nodeVersion}`, 'green');
+
+        // 檢查 Git
+        if (commandExists('git')) {
+            const gitVersion = exec('git --version', { silent: true }).trim();
+            log(`  ✓ ${gitVersion}`, 'green');
+        } else {
+            log('  ✗ Git 未安裝', 'red');
+            log('  請先安裝 Git: https://git-scm.com/', 'yellow');
+            process.exit(1);
+        }
+
+        // 檢查 Kiro
+        const kiroCli = getKiroCli();
+        if (kiroCli) {
+            log(`  ✓ Kiro CLI 找到`, 'green');
+        } else {
+            log('  ! Kiro CLI 未找到（extension 需要手動安裝）', 'yellow');
+        }
+        console.log('');
+
+        // Step 3: 下載專案
+        logStep(3, totalSteps, '下載 MyKiroHero...');
+        
+        if (fs.existsSync(installPath)) {
+            log('  目錄已存在，更新中...', 'yellow');
+            exec('git pull origin main', { cwd: installPath, ignoreError: true });
+        } else {
+            exec(`git clone https://github.com/NorlWu-TW/MyKiroHero.git "${installPath}"`);
+        }
+        log('  ✓ 下載完成', 'green');
+        console.log('');
+
+        // Step 4: 安裝依賴
+        logStep(4, totalSteps, '安裝 Node.js 依賴...');
+        exec('npm install', { cwd: installPath });
+        log('  ✓ 依賴安裝完成', 'green');
+        console.log('');
+
+        // Step 5: 安裝 Extension
+        logStep(5, totalSteps, '安裝 vscode-rest-control extension...');
+        
+        if (kiroCli) {
+            const vsixUrl = 'https://github.com/dpar39/vscode-rest-control/releases/download/v0.0.18/vscode-rest-control-0.0.18.vsix';
+            const vsixPath = path.join(installPath, 'vscode-rest-control-0.0.18.vsix');
+            
+            // 下載 vsix（如果不存在）
+            if (!fs.existsSync(vsixPath)) {
+                log('  下載 extension...', 'yellow');
+                if (isWindows) {
+                    exec(`powershell -Command "Invoke-WebRequest -Uri '${vsixUrl}' -OutFile '${vsixPath}'"`, { silent: true });
+                } else {
+                    exec(`curl -L -o "${vsixPath}" "${vsixUrl}"`, { silent: true });
+                }
+            }
+            
+            // 安裝
+            try {
+                exec(`"${kiroCli}" --install-extension "${vsixPath}"`, { silent: true });
+                log('  ✓ Extension 安裝完成', 'green');
+            } catch {
+                log('  ! Extension 安裝失敗，請手動安裝', 'yellow');
+            }
+        } else {
+            log('  ! 跳過（找不到 Kiro CLI）', 'yellow');
+            log('  請手動安裝: kiro --install-extension vscode-rest-control-0.0.18.vsix', 'yellow');
+        }
+        console.log('');
+
+        // Step 6: 設定 Steering 檔案
+        logStep(6, totalSteps, '設定 AI 人格檔案...');
+        
+        const steeringPath = path.join(installPath, '.kiro', 'steering');
+        const templatePath = path.join(installPath, 'templates', 'steering');
+        
+        // 建立目錄
+        fs.mkdirSync(steeringPath, { recursive: true });
+        fs.mkdirSync(path.join(steeringPath, 'memory'), { recursive: true });
+        
+        // 複製範本（只複製不存在的檔案）
+        const templateFiles = fs.readdirSync(templatePath);
+        let copiedCount = 0;
+        
+        for (const file of templateFiles) {
+            const srcFile = path.join(templatePath, file);
+            const destFile = path.join(steeringPath, file);
+            
+            if (fs.statSync(srcFile).isFile() && !fs.existsSync(destFile)) {
+                fs.copyFileSync(srcFile, destFile);
+                log(`    + ${file}`, 'green');
+                copiedCount++;
+            }
+        }
+        
+        if (copiedCount === 0) {
+            log('  已有設定檔，跳過', 'yellow');
+        } else {
+            log(`  ✓ 複製了 ${copiedCount} 個檔案`, 'green');
+        }
+        console.log('');
+
+        // Step 7: 寫入環境設定
+        logStep(7, totalSteps, '寫入環境設定...');
+        
+        const envPath = path.join(installPath, '.env');
+        const heartbeatPath = path.join(steeringPath, 'HEARTBEAT.md').replace(/\\/g, '/');
+        const steeringPathUnix = steeringPath.replace(/\\/g, '/');
+        
+        const envContent = `# MyKiroHero 環境設定
+# 產生時間: ${new Date().toISOString()}
+# 平台: ${platform}
+
+# AI 回覆前綴
+AI_PREFIX=*[AI Assistant]* 🤖
+
+# Gateway port
+GATEWAY_PORT=3000
+
+# 訊息分段設定
+MESSAGE_MAX_LENGTH=1500
+MESSAGE_SPLIT_DELAY=500
+
+# 錯誤通知
+ERROR_NOTIFICATION=true
+
+# Heartbeat 設定檔路徑
+HEARTBEAT_PATH=${heartbeatPath}
+
+# Steering 檔案路徑
+STEERING_PATH=${steeringPathUnix}
+
+# IDE 設定
+IDE_TYPE=kiro
+IDE_REST_PORT=55139
+`;
+        
+        fs.writeFileSync(envPath, envContent);
+        log('  ✓ 已寫入 .env', 'green');
+        console.log('');
+
+        // 設定 MCP
+        const mcpSettingsPath = path.join(installPath, '.kiro', 'settings');
+        fs.mkdirSync(mcpSettingsPath, { recursive: true });
+        
+        const mcpContent = {
+            mcpServers: {
+                'mykiro-gateway': {
+                    command: 'node',
+                    args: ['src/mcp-server.js'],
+                    env: { GATEWAY_URL: 'http://localhost:3000' },
+                    disabled: false,
+                    autoApprove: ['send_whatsapp', 'send_whatsapp_media', 'get_gateway_status']
+                }
+            }
+        };
+        
+        fs.writeFileSync(
+            path.join(mcpSettingsPath, 'mcp.json'),
+            JSON.stringify(mcpContent, null, 2)
+        );
+
+        // 設定 tasks.json
+        const vscodePath = path.join(installPath, '.vscode');
+        fs.mkdirSync(vscodePath, { recursive: true });
+        
+        const tasksContent = {
+            version: '2.0.0',
+            tasks: [{
+                label: 'Start Gateway',
+                type: 'shell',
+                command: 'node',
+                args: ['src/gateway/index.js'],
+                isBackground: true,
+                problemMatcher: [],
+                runOptions: { runOn: 'folderOpen' },
+                presentation: { reveal: 'silent', panel: 'dedicated' }
+            }]
+        };
+        
+        fs.writeFileSync(
+            path.join(vscodePath, 'tasks.json'),
+            JSON.stringify(tasksContent, null, 2)
+        );
+
+        // 完成
+        console.log('');
+        log('╔══════════════════════════════════════════════════════════════╗', 'green');
+        log('║  ✓ 安裝完成！                                                ║', 'green');
+        log('╚══════════════════════════════════════════════════════════════╝', 'green');
+        console.log('');
+        log(`安裝路徑: ${installPath}`, 'cyan');
+        console.log('');
+        log('下一步:', 'yellow');
+        log(`  1. 用 Kiro 開啟資料夾: ${installPath}`, 'white');
+        log('  2. 在終端機執行: node src/gateway/index.js', 'white');
+        log('  3. 用手機掃描 QR Code 登入 WhatsApp', 'white');
+        log('  4. 開始和你的 AI 助手對話！', 'white');
+        console.log('');
+
+        // 詢問是否立即啟動
+        const startNow = await ask(rl, '是否立即啟動 Gateway? (y/N): ');
+        
+        if (startNow.toLowerCase() === 'y') {
+            console.log('');
+            log('啟動 Gateway...', 'cyan');
+            log('（首次啟動會顯示 QR Code，請用手機掃描）', 'yellow');
+            console.log('');
+            
+            rl.close();
+            
+            // 啟動 Gateway（不等待結束）
+            const gateway = spawn('node', ['src/gateway/index.js'], {
+                cwd: installPath,
+                stdio: 'inherit'
+            });
+            
+            gateway.on('error', (err) => {
+                log(`啟動失敗: ${err.message}`, 'red');
+            });
+        } else {
+            rl.close();
+        }
+
+    } catch (error) {
+        log(`安裝失敗: ${error.message}`, 'red');
+        rl.close();
+        process.exit(1);
+    }
+}
+
+main();

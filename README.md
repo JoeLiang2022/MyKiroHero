@@ -16,10 +16,16 @@
 
 ## 🚀 快速開始
 
-### 1. 一鍵安裝
+### 1. 安裝
 
-在 PowerShell 執行：
+**方法 A - 跨平台（推薦）：**
+```bash
+git clone https://github.com/NorlWu-TW/MyKiroHero.git
+cd MyKiroHero
+node install.js
+```
 
+**方法 B - Windows PowerShell：**
 ```powershell
 irm https://raw.githubusercontent.com/NorlWu-TW/MyKiroHero/main/install.ps1 | iex
 ```
@@ -183,8 +189,9 @@ IDE_REST_PORT=55139
 
 ## 系統需求
 
-- Windows 10/11
+- Windows 10/11、macOS、或 Linux
 - Node.js 18+
+- Git
 - Kiro IDE
 - vscode-rest-control extension
 
