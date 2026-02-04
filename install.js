@@ -371,8 +371,8 @@ async function main() {
 # AI reply prefix
 AI_PREFIX=*[AI Assistant]* 🤖
 
-# Gateway port
-GATEWAY_PORT=3000
+# Gateway port (auto = system assigns available port)
+GATEWAY_PORT=auto
 
 # Message settings
 MESSAGE_MAX_LENGTH=1500
