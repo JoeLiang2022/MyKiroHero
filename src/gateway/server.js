@@ -284,7 +284,12 @@ class MessageGateway extends EventEmitter {
 
     // 從 HEARTBEAT.md 讀取排程設定
     readHeartbeatSchedules() {
-        const heartbeatPath = config.heartbeatPath || path.join(__dirname, '../../.kiro/steering/HEARTBEAT.md');
+        const heartbeatPath = config.heartbeatPath;
+        
+        if (!heartbeatPath) {
+            console.log(`[Heartbeat] 未設定 HEARTBEAT_PATH`);
+            return [];
+        }
         
         try {
             if (!fs.existsSync(heartbeatPath)) {

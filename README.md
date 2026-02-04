@@ -146,19 +146,44 @@ MyKiroHero/
 │   ├── gateway/
 │   │   ├── index.js              # 主程式入口
 │   │   ├── server.js             # Gateway server（含 Heartbeat）
-│   │   ├── config.js             # 設定檔
+│   │   ├── config.js             # 設定檔（環境變數配置）
 │   │   ├── whatsapp-adapter.js   # WhatsApp 連線
 │   │   ├── telegram-adapter.js   # Telegram 連線（可選）
 │   │   └── handlers/
-│   │       └── kiro-cli-handler.js  # REST API handler
+│   │       ├── index.js          # Handler Factory
+│   │       ├── base-handler.js   # 抽象基類
+│   │       └── kiro-handler.js   # Kiro IDE handler
+│   ├── mcp-server.js             # MCP Server（標準協議）
 │   └── whatsapp/
-│       └── client.js             # WhatsApp client
+│       └── client.js             # WhatsApp 獨立 client
+├── templates/
+│   └── steering/                 # AI 人格範本
 ├── .env.example                  # 環境變數範例
 ├── install.ps1                   # 一鍵安裝腳本
 ├── package.json                  # Node.js 依賴
 ├── SETUP.md                      # 詳細設定指南
 └── README.md                     # 本文件
 ```
+
+## 🏗️ 分層架構
+
+```
+🌐 通用層（任何 AI 工具都能用）：
+├── Gateway Server (server.js)
+├── REST API (/api/reply, /api/health)
+├── WhatsApp/Telegram adapters
+├── MCP Server（標準協議）
+└── Handler 抽象層 (base-handler.js)
+
+🔷 Kiro 專屬層（未來可替換）：
+├── .kiro/steering/ (人格檔案)
+├── .kiro/settings/mcp.json
+├── kiro-handler.js
+├── vscode-rest-control extension
+└── .vscode/tasks.json (自動啟動)
+```
+
+未來支援 Cursor/Windsurf 只需新增對應的 handler！
 
 ## 系統需求
 
@@ -177,20 +202,22 @@ MyKiroHero/
 
 ## ⚙️ 設定
 
-編輯 `src/gateway/config.js` 自訂：
+所有設定都透過環境變數配置，編輯 `.env` 檔案：
 
-```javascript
-module.exports = {
-    aiPrefix: '*[叫小賀]* 🤪',     // AI 回覆前綴
-    kiroRestPort: 55139,           // REST Control port
-    serverPort: 3000,              // Gateway port
-    message: {
-        maxLength: 1500,           // 訊息分段長度
-        splitDelay: 500            // 分段延遲（ms）
-    },
-    heartbeatPath: '...'           // HEARTBEAT.md 路徑
-};
+```bash
+# 🌐 通用設定
+AI_PREFIX=*[叫小賀]* 🤪      # AI 回覆前綴
+GATEWAY_PORT=3000            # Gateway port
+MESSAGE_MAX_LENGTH=1500      # 訊息分段長度
+HEARTBEAT_PATH=./HEARTBEAT.md
+
+# 🔷 IDE 專屬設定
+IDE_TYPE=kiro                # IDE 類型 (kiro/cursor/windsurf)
+IDE_REST_PORT=55139          # REST Control port
+STEERING_PATH=./.kiro/steering
 ```
+
+詳細說明請參考 `.env.example`。
 
 ## 📜 授權
 

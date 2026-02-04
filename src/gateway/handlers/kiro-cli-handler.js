@@ -1,5 +1,8 @@
 /**
- * Kiro REST API Handler
+ * @deprecated 此檔案已被 kiro-handler.js 取代
+ * 保留此檔案僅為向後相容，新程式碼請使用 handlers/index.js
+ * 
+ * Kiro REST API Handler (Legacy)
  * 收到 WhatsApp 訊息後，用 vscode-rest-control extension 送到 Kiro chat
  * 
  * 需要安裝 vscode-rest-control extension:
@@ -10,7 +13,7 @@ const http = require('http');
 const config = require('../config');
 
 // REST Control extension port
-const KIRO_REST_PORT = config.kiroRestPort;
+const KIRO_REST_PORT = config.ideRestPort || config.kiroRestPort || 55139;
 
 function sendToKiroChat(message) {
     return new Promise((resolve, reject) => {
