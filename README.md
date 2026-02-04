@@ -1,5 +1,8 @@
 # MyKiroHero 🤖
 
+[![Version](https://img.shields.io/github/v/tag/NorlWu-TW/MyKiroHero?label=version)](https://github.com/NorlWu-TW/MyKiroHero/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 > 🌐 [English](README.md) | [繁體中文](README-zh.md)
 
 **Turn Kiro AI into your WhatsApp assistant**
