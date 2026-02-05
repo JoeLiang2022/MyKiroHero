@@ -13,6 +13,13 @@ const {
 const fs = require('fs');
 const path = require('path');
 
+const SkillLoader = require('./skills/skill-loader.js');
+
+// 初始化 Skill Loader
+const skillsPath = path.join(__dirname, '../skills');
+const skillLoader = new SkillLoader(skillsPath);
+skillLoader.scan();
+
 // 動態取得 Gateway URL
 function getGatewayUrl() {
     // 優先使用環境變數
@@ -106,6 +113,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     properties: {},
                 },
             },
+            {
+                name: 'list_skills',
+                description: '列出所有可用的 Agent Skills',
+                inputSchema: {
+                    type: 'object',
+                    properties: {},
+                },
+            },
+            {
+                name: 'load_skill',
+                description: '載入指定的 Skill 完整內容',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        name: {
+                            type: 'string',
+                            description: 'Skill 名稱',
+                        },
+                    },
+                    required: ['name'],
+                },
+            },
         ],
     };
 });
@@ -155,6 +184,33 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 const result = await response.json();
                 return {
                     content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+                };
+            }
+
+            case 'list_skills': {
+                const skills = skillLoader.getSkillList();
+                const summary = skillLoader.getSkillSummary();
+                return {
+                    content: [{ 
+                        type: 'text', 
+                        text: `Found ${skills.length} skills:\n${summary}` 
+                    }],
+                };
+            }
+
+            case 'load_skill': {
+                const skill = skillLoader.loadSkill(args.name);
+                if (!skill) {
+                    return {
+                        content: [{ type: 'text', text: `Skill not found: ${args.name}` }],
+                        isError: true,
+                    };
+                }
+                return {
+                    content: [{ 
+                        type: 'text', 
+                        text: `# ${skill.name}\n\n${skill.content}\n\n---\nAdditional files: ${skill.files.join(', ') || 'none'}` 
+                    }],
                 };
             }
 
