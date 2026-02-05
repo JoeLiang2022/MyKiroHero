@@ -8,7 +8,10 @@
     "telegram": "node src/telegram/client.js",
     "telegram:bot": "node src/telegram/bot.js",
     "gateway": "node src/gateway/index.js",
-    "start": "node src/gateway/index.js"
+    "start": "node src/gateway/index.js",
+    "release:patch": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
