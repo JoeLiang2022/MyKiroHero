@@ -18,6 +18,10 @@ const readline = require('readline');
 // 測試模式
 const isTestMode = process.argv.includes('--test');
 
+// 讀取版本號
+const packageJson = require('./package.json');
+const VERSION = packageJson.version;
+
 // 平台偵測
 const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
@@ -198,7 +202,7 @@ async function main() {
     console.log('');
     log('╔══════════════════════════════════════════════════════════════╗', 'cyan');
     log('║                                                              ║', 'cyan');
-    log('║   🤖 MyKiroHero Installer / 安裝程式                         ║', 'cyan');
+    log(`║   🤖 MyKiroHero Installer v${VERSION.padEnd(40)}║`, 'cyan');
     log('║   Turn Kiro AI into your WhatsApp assistant                  ║', 'cyan');
     log('║   讓 Kiro AI 成為你的 WhatsApp 助手                          ║', 'cyan');
     log('║                                                              ║', 'cyan');
