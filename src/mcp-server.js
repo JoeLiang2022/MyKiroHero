@@ -135,6 +135,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     required: ['name'],
                 },
             },
+            {
+                name: 'get_weather',
+                description: '查詢指定地點的天氣（使用 wttr.in API）',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        location: {
+                            type: 'string',
+                            description: '地點名稱（例如: Taipei, 三重, Tokyo）',
+                        },
+                    },
+                    required: ['location'],
+                },
+            },
         ],
     };
 });
@@ -211,6 +225,46 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         type: 'text', 
                         text: `# ${skill.name}\n\n${skill.content}\n\n---\nAdditional files: ${skill.files.join(', ') || 'none'}` 
                     }],
+                };
+            }
+
+            case 'get_weather': {
+                const location = encodeURIComponent(args.location);
+                const response = await fetch(`https://wttr.in/${location}?format=j1`);
+                
+                if (!response.ok) {
+                    throw new Error(`wttr.in API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const current = data.current_condition[0];
+                const area = data.nearest_area[0];
+                
+                // 格式化天氣資訊
+                const weather = {
+                    location: area.areaName[0].value,
+                    country: area.country[0].value,
+                    temperature: `${current.temp_C}°C`,
+                    feelsLike: `${current.FeelsLikeC}°C`,
+                    condition: current.weatherDesc[0].value,
+                    humidity: `${current.humidity}%`,
+                    windSpeed: `${current.windspeedKmph} km/h`,
+                    windDir: current.winddir16Point,
+                    visibility: `${current.visibility} km`,
+                    uvIndex: current.uvIndex,
+                    observationTime: current.observation_time,
+                };
+                
+                const text = `📍 ${weather.location}, ${weather.country}
+🌡️ 溫度: ${weather.temperature} (體感 ${weather.feelsLike})
+☁️ 天氣: ${weather.condition}
+💧 濕度: ${weather.humidity}
+💨 風速: ${weather.windSpeed} ${weather.windDir}
+👁️ 能見度: ${weather.visibility}
+☀️ UV 指數: ${weather.uvIndex}`;
+                
+                return {
+                    content: [{ type: 'text', text }],
                 };
             }
 

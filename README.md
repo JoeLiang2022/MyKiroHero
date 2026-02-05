@@ -111,6 +111,27 @@ Set scheduled tasks in `.kiro/steering/HEARTBEAT.md`:
 
 Gateway auto-reads and triggers tasks at specified times.
 
+## 🔧 MCP Tools
+
+The MCP server provides these tools for Kiro:
+
+| Tool | Description |
+|------|-------------|
+| `send_whatsapp` | Send WhatsApp text message |
+| `send_whatsapp_media` | Send media file (image, video, etc.) |
+| `get_gateway_status` | Check Gateway health |
+| `list_skills` | List available Agent Skills |
+| `load_skill` | Load a specific skill's content |
+| `get_weather` | Query weather for any location (via wttr.in) |
+
+### Weather Example
+
+```
+get_weather({ location: "Taipei" })
+get_weather({ location: "三重" })
+get_weather({ location: "Tokyo" })
+```
+
 ## 📡 API
 
 | Endpoint | Method | Description |

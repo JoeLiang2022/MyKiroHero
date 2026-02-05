@@ -111,6 +111,27 @@ cp .env.example .env
 
 Gateway 會自動讀取並在指定時間觸發任務。
 
+## 🔧 MCP Tools
+
+MCP server 提供以下工具給 Kiro：
+
+| 工具 | 說明 |
+|------|------|
+| `send_whatsapp` | 發送 WhatsApp 文字訊息 |
+| `send_whatsapp_media` | 發送媒體檔案（圖片、影片等） |
+| `get_gateway_status` | 檢查 Gateway 狀態 |
+| `list_skills` | 列出可用的 Agent Skills |
+| `load_skill` | 載入指定 skill 的內容 |
+| `get_weather` | 查詢天氣（透過 wttr.in） |
+
+### 天氣查詢範例
+
+```
+get_weather({ location: "Taipei" })
+get_weather({ location: "三重" })
+get_weather({ location: "Tokyo" })
+```
+
 ## 📡 API
 
 | 端點 | 方法 | 說明 |

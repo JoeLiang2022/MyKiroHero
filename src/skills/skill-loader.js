@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Skill Loader - 載入並管理 Agent Skills
  */
 const fs = require('fs');
@@ -38,6 +38,7 @@ class SkillLoader {
 
     parseMetadata(filePath) {
         let content = fs.readFileSync(filePath, 'utf-8');
+        // Normalize line endings for Windows compatibility
         content = content.replace(/\r\n/g, '\n');
         
         const m = content.match(/^---\n([\s\S]*?)\n---/);
@@ -79,6 +80,7 @@ class SkillLoader {
         if (!skill) return null;
         
         let content = fs.readFileSync(skill.path, 'utf-8');
+        // Normalize line endings for Windows compatibility
         content = content.replace(/\r\n/g, '\n');
         
         const bodyMatch = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
