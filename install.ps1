@@ -39,7 +39,7 @@ $installPath = if ($customPath) { $customPath } else { $defaultPath }
 # 🌐 Step 2: 檢查並安裝必要工具 [通用]
 # ============================================================
 Write-Host ""
-Write-Host "[1/8] 檢查必要工具..." -ForegroundColor Cyan
+Write-Host "[1/10] 檢查必要工具..." -ForegroundColor Cyan
 
 # 檢查 Node.js
 $hasNode = $false
@@ -141,7 +141,7 @@ if (-not $hasGit) {
 # 🌐 Step 3: 下載 MyKiroHero [通用]
 # ============================================================
 Write-Host ""
-Write-Host "[2/8] 下載 MyKiroHero..." -ForegroundColor Cyan
+Write-Host "[2/10] 下載 MyKiroHero..." -ForegroundColor Cyan
 
 if (Test-Path $installPath) {
     Write-Host "  ! 目錄已存在，更新中..." -ForegroundColor Yellow
@@ -157,7 +157,7 @@ Write-Host "  ✓ 下載完成" -ForegroundColor Green
 # 🌐 Step 4: 安裝 Node.js 依賴 [通用]
 # ============================================================
 Write-Host ""
-Write-Host "[3/8] 安裝 Node.js 依賴..." -ForegroundColor Cyan
+Write-Host "[3/10] 安裝 Node.js 依賴..." -ForegroundColor Cyan
 Push-Location $installPath
 npm install --silent 2>$null
 Pop-Location
@@ -169,7 +169,7 @@ Write-Host "  ✓ 依賴安裝完成" -ForegroundColor Green
 # 未來支援 Windsurf: 待研究
 # ============================================================
 Write-Host ""
-Write-Host "[4/8] 安裝 vscode-rest-control extension..." -ForegroundColor Cyan
+Write-Host "[4/10] 安裝 vscode-rest-control extension..." -ForegroundColor Cyan
 
 $vsixUrl = "https://github.com/dpar39/vscode-rest-control/releases/download/v0.0.18/vscode-rest-control-0.0.18.vsix"
 
@@ -213,7 +213,7 @@ if ($kiroCli) {
 # 其他 IDE 可能使用不同路徑，透過 STEERING_PATH 環境變數配置
 # ============================================================
 Write-Host ""
-Write-Host "[5/8] 設定 AI 人格檔案..." -ForegroundColor Cyan
+Write-Host "[5/10] 設定 AI 人格檔案..." -ForegroundColor Cyan
 
 $steeringPath = "$installPath\.kiro\steering"
 $templatePath = "$installPath\templates\steering"
@@ -504,7 +504,7 @@ switch ($steeringChoice) {
 # MCP 協議本身是通用的，但設定檔路徑是 Kiro 專屬
 # ============================================================
 Write-Host ""
-Write-Host "[6/8] 設定 MCP Server..." -ForegroundColor Cyan
+Write-Host "[6/10] 設定 MCP Server..." -ForegroundColor Cyan
 
 $mcpSettingsPath = "$installPath\.kiro\settings"
 if (-not (Test-Path $mcpSettingsPath)) {
@@ -537,11 +537,11 @@ $mcpContent | Out-File -FilePath $mcpJsonPath -Encoding utf8
 Write-Host "  ✓ MCP 設定完成" -ForegroundColor Green
 
 # ============================================================
-# 🔷 Step 8: 設定自動啟動 Gateway [VS Code/Kiro 專屬]
-# 使用 VS Code tasks.json 的 runOn: folderOpen 功能
+# 🔷 Step 8: 設定 VS Code tasks [VS Code/Kiro 專屬]
+# 這是備用方案，主要使用 PM2 管理 Gateway
 # ============================================================
 Write-Host ""
-Write-Host "[7/8] 設定自動啟動 Gateway..." -ForegroundColor Cyan
+Write-Host "[7/10] 設定 VS Code tasks..." -ForegroundColor Cyan
 
 $vscodePath = "$installPath\.vscode"
 if (-not (Test-Path $vscodePath)) {
@@ -579,7 +579,7 @@ Write-Host "  ✓ 自動啟動設定完成" -ForegroundColor Green
 # 環境變數讓路徑可配置，支援不同 IDE
 # ============================================================
 Write-Host ""
-Write-Host "[8/8] 寫入環境設定..." -ForegroundColor Cyan
+Write-Host "[8/10] 寫入環境設定..." -ForegroundColor Cyan
 
 $heartbeatPath = "$steeringPath\HEARTBEAT.md" -replace '\\', '/'
 $steeringPathUnix = $steeringPath -replace '\\', '/'
@@ -628,6 +628,102 @@ $envContent | Out-File -FilePath $envPath -Encoding utf8
 Write-Host "  ✓ 已寫入 .env" -ForegroundColor Green
 
 # ============================================================
+# 🌐 Step 10: 安裝 PM2 並設定 Gateway 自動啟動 [通用]
+# PM2 是 Node.js process manager，讓 Gateway 在背景持續運行
+# ============================================================
+Write-Host ""
+Write-Host "[9/10] 設定 PM2 (Gateway 自動啟動)..." -ForegroundColor Cyan
+
+# 檢查 PM2 是否已安裝
+$hasPm2 = $false
+try {
+    $pm2Version = pm2 --version 2>$null
+    if ($pm2Version) {
+        Write-Host "  ✓ PM2 $pm2Version 已安裝" -ForegroundColor Green
+        $hasPm2 = $true
+    }
+} catch {}
+
+if (-not $hasPm2) {
+    Write-Host "  安裝 PM2..." -ForegroundColor Yellow
+    npm install -g pm2 --silent 2>$null
+    
+    # 驗證安裝
+    try {
+        $pm2Version = pm2 --version 2>$null
+        if ($pm2Version) {
+            Write-Host "  ✓ PM2 $pm2Version 安裝完成" -ForegroundColor Green
+            $hasPm2 = $true
+        }
+    } catch {}
+    
+    if (-not $hasPm2) {
+        Write-Host "  ! PM2 安裝失敗，Gateway 需要手動啟動" -ForegroundColor Yellow
+    }
+}
+
+if ($hasPm2) {
+    # 用 PM2 啟動 Gateway
+    Write-Host "  設定 PM2 管理 Gateway..." -ForegroundColor Yellow
+    Push-Location $installPath
+    pm2 start ecosystem.config.js 2>$null
+    pm2 save 2>$null
+    Pop-Location
+    Write-Host "  ✓ Gateway 已用 PM2 啟動" -ForegroundColor Green
+    
+    # 詢問是否設定開機自啟
+    Write-Host ""
+    Write-Host "  💡 PM2 可以讓 Gateway 在系統重啟後自動恢復" -ForegroundColor Cyan
+    $setupStartup = Read-Host "  要設定 Gateway 開機自啟嗎? (y/N)"
+    
+    if ($setupStartup -eq "y" -or $setupStartup -eq "Y") {
+        Write-Host "  設定開機自啟..." -ForegroundColor Yellow
+        # Windows 上使用 pm2-startup 或手動設定
+        # 先嘗試 pm2 startup
+        $startupResult = pm2 startup 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  ✓ PM2 開機自啟設定完成" -ForegroundColor Green
+        } else {
+            # 如果 pm2 startup 失敗，建立啟動腳本
+            Write-Host "  建立啟動腳本..." -ForegroundColor Yellow
+            $startupScript = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\pm2-resurrect.cmd"
+            "@echo off`npm2 resurrect" | Out-File -FilePath $startupScript -Encoding ascii
+            Write-Host "  ✓ 已建立啟動腳本: $startupScript" -ForegroundColor Green
+        }
+    }
+}
+
+# ============================================================
+# 🔷 Step 11: Kiro 開機自啟 (可選) [Kiro 專屬]
+# ============================================================
+Write-Host ""
+Write-Host "[10/10] Kiro 開機自啟設定..." -ForegroundColor Cyan
+
+Write-Host "  💡 設定 Kiro 開機自啟後，登入 Windows 就會自動開啟 Kiro" -ForegroundColor Cyan
+Write-Host "  這樣 AI 助手就能在你登入後立即開始工作" -ForegroundColor White
+$setupKiroStartup = Read-Host "  要設定 Kiro 開機自啟嗎? (y/N)"
+
+if ($setupKiroStartup -eq "y" -or $setupKiroStartup -eq "Y") {
+    # 找 Kiro 執行檔
+    $kiroExe = "$env:LOCALAPPDATA\Programs\Kiro\Kiro.exe"
+    
+    if (Test-Path $kiroExe) {
+        $WshShell = New-Object -ComObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Kiro.lnk")
+        $Shortcut.TargetPath = $kiroExe
+        $Shortcut.WorkingDirectory = $installPath
+        $Shortcut.Save()
+        Write-Host "  ✓ Kiro 開機自啟設定完成" -ForegroundColor Green
+        Write-Host "  工作目錄: $installPath" -ForegroundColor Gray
+    } else {
+        Write-Host "  ! 找不到 Kiro.exe，請確認 Kiro 已安裝" -ForegroundColor Yellow
+        Write-Host "  預期路徑: $kiroExe" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "  跳過 Kiro 開機自啟設定" -ForegroundColor Gray
+}
+
+# ============================================================
 # 完成
 # ============================================================
 Write-Host ""
@@ -638,24 +734,44 @@ Write-Host ""
 Write-Host "安裝路徑: $installPath" -ForegroundColor Cyan
 Write-Host "Steering: $steeringPath" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "下一步:" -ForegroundColor Yellow
-Write-Host "  1. 用 Kiro 開啟資料夾: $installPath" -ForegroundColor White
-Write-Host "  2. 在 Kiro 終端機執行:" -ForegroundColor White
-Write-Host ""
-Write-Host "     node src/gateway/index.js" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  3. 用手機掃描 QR Code 登入 WhatsApp" -ForegroundColor White
-Write-Host "  4. 開始和你的 AI 助手對話！" -ForegroundColor White
+
+if ($hasPm2) {
+    Write-Host "Gateway 狀態:" -ForegroundColor Yellow
+    pm2 list 2>$null
+    Write-Host ""
+    Write-Host "下一步:" -ForegroundColor Yellow
+    Write-Host "  1. 用 Kiro 開啟資料夾: $installPath" -ForegroundColor White
+    Write-Host "  2. 首次使用需要掃描 QR Code 登入 WhatsApp" -ForegroundColor White
+    Write-Host "     執行: pm2 logs gateway --lines 50" -ForegroundColor Cyan
+    Write-Host "     找到 QR Code 後用手機掃描" -ForegroundColor White
+    Write-Host "  3. 開始和你的 AI 助手對話！" -ForegroundColor White
+    Write-Host ""
+    Write-Host "常用指令:" -ForegroundColor Yellow
+    Write-Host "  pm2 logs gateway    - 查看 Gateway 日誌" -ForegroundColor Gray
+    Write-Host "  pm2 restart gateway - 重啟 Gateway" -ForegroundColor Gray
+    Write-Host "  pm2 stop gateway    - 停止 Gateway" -ForegroundColor Gray
+} else {
+    Write-Host "下一步:" -ForegroundColor Yellow
+    Write-Host "  1. 用 Kiro 開啟資料夾: $installPath" -ForegroundColor White
+    Write-Host "  2. 在 Kiro 終端機執行:" -ForegroundColor White
+    Write-Host ""
+    Write-Host "     node src/gateway/index.js" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  3. 用手機掃描 QR Code 登入 WhatsApp" -ForegroundColor White
+    Write-Host "  4. 開始和你的 AI 助手對話！" -ForegroundColor White
+}
 Write-Host ""
 
-# 詢問是否立即啟動
-$startNow = Read-Host "是否立即啟動 Gateway? (y/N)"
-if ($startNow -eq "y" -or $startNow -eq "Y") {
-    Write-Host ""
-    Write-Host "啟動 Gateway..." -ForegroundColor Cyan
-    Write-Host "（首次啟動會顯示 QR Code，請用手機掃描）" -ForegroundColor Yellow
-    Write-Host ""
-    Push-Location $installPath
-    node src/gateway/index.js
-    Pop-Location
+# 如果沒有 PM2，詢問是否立即啟動
+if (-not $hasPm2) {
+    $startNow = Read-Host "是否立即啟動 Gateway? (y/N)"
+    if ($startNow -eq "y" -or $startNow -eq "Y") {
+        Write-Host ""
+        Write-Host "啟動 Gateway..." -ForegroundColor Cyan
+        Write-Host "（首次啟動會顯示 QR Code，請用手機掃描）" -ForegroundColor Yellow
+        Write-Host ""
+        Push-Location $installPath
+        node src/gateway/index.js
+        Pop-Location
+    }
 }

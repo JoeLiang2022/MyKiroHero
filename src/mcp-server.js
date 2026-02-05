@@ -12,6 +12,7 @@ const {
 } = require('@modelcontextprotocol/sdk/types.js');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
 
 const SkillLoader = require('./skills/skill-loader.js');
 
@@ -149,6 +150,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     required: ['location'],
                 },
             },
+            {
+                name: 'restart_gateway',
+                description: '重啟 Gateway（需要 PM2）',
+                inputSchema: {
+                    type: 'object',
+                    properties: {},
+                },
+            },
         ],
     };
 });
@@ -266,6 +275,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 return {
                     content: [{ type: 'text', text }],
                 };
+            }
+
+            case 'restart_gateway': {
+                return new Promise((resolve) => {
+                    exec('pm2 restart gateway', (error, stdout, stderr) => {
+                        if (error) {
+                            resolve({
+                                content: [{ type: 'text', text: `重啟失敗: ${error.message}\n\n可能原因：\n1. PM2 未安裝 (npm install -g pm2)\n2. Gateway 未用 PM2 啟動` }],
+                                isError: true,
+                            });
+                            return;
+                        }
+                        resolve({
+                            content: [{ type: 'text', text: `Gateway 重啟成功！\n${stdout}` }],
+                        });
+                    });
+                });
             }
 
             default:

@@ -21,7 +21,6 @@ class MessageGateway extends EventEmitter {
         this.app = express();
         this.server = http.createServer(this.app);
         this.wss = new WebSocket.Server({ server: this.server });
-        this.messageQueue = [];
         this.handlers = new Map();
         this.clients = { whatsapp: null, telegram: null };
         
@@ -31,20 +30,6 @@ class MessageGateway extends EventEmitter {
 
     setupExpress() {
         this.app.use(express.json());
-
-        // 取得所有待處理訊息
-        this.app.get('/api/messages', (req, res) => {
-            res.json({
-                pending: this.messageQueue.length,
-                messages: this.messageQueue
-            });
-        });
-
-        // 取得下一則待處理訊息
-        this.app.get('/api/messages/next', (req, res) => {
-            const msg = this.messageQueue.shift();
-            res.json(msg || { empty: true });
-        });
 
         // 發送回覆
         this.app.post('/api/reply', async (req, res) => {
@@ -89,8 +74,7 @@ class MessageGateway extends EventEmitter {
             res.json({
                 status: 'ok',
                 whatsapp: this.clients.whatsapp ? 'connected' : 'disconnected',
-                telegram: this.clients.telegram ? 'connected' : 'disconnected',
-                pendingMessages: this.messageQueue.length
+                telegram: this.clients.telegram ? 'connected' : 'disconnected'
             });
         });
 
@@ -149,7 +133,6 @@ class MessageGateway extends EventEmitter {
             ...message
         };
 
-        this.messageQueue.push(enrichedMessage);
         this.emit('message', enrichedMessage);
         this.broadcast({ type: 'new_message', data: enrichedMessage });
         
@@ -458,8 +441,6 @@ class MessageGateway extends EventEmitter {
             console.log(`[Gateway] Server running on http://localhost:${actualPort}`);
             console.log(`[Gateway] WebSocket on ws://localhost:${actualPort}`);
             console.log(`[Gateway] REST API:`);
-            console.log(`  GET  /api/messages      - 取得所有待處理訊息`);
-            console.log(`  GET  /api/messages/next - 取得下一則訊息`);
             console.log(`  POST /api/reply         - 發送文字回覆`);
             console.log(`  POST /api/reply/media   - 發送媒體檔案`);
             console.log(`  GET  /api/health        - 健康檢查`);

@@ -100,7 +100,12 @@ class KiroHandler extends BaseHandler {
         console.log(`[Kiro] 準備送到 Kiro: ${message.text}`);
 
         // 組合訊息
-        const prompt = `[WhatsApp] ${message.sender}: ${message.text} (chatId: ${message.chatId})`;
+        let prompt = `[WhatsApp] ${message.sender}: ${message.text} (chatId: ${message.chatId})`;
+        
+        // 如果有媒體檔案，加入路徑資訊
+        if (message.mediaPath) {
+            prompt += `\n\n📎 附件: ${message.mediaPath} (${message.mediaMimeType || 'unknown'})`;
+        }
 
         try {
             await this.sendToChat(prompt);

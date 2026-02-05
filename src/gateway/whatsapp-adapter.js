@@ -47,6 +47,22 @@ class WhatsAppAdapter {
                 // 忽略
             }
             
+            // 處理媒體檔案
+            let mediaPath = null;
+            let mediaMimeType = null;
+            if (msg.hasMedia && !msg.fromMe) {
+                try {
+                    const media = await msg.downloadMedia();
+                    if (media) {
+                        mediaMimeType = media.mimetype;
+                        mediaPath = await this.saveMedia(media, msg.id._serialized);
+                        console.log(`[WhatsApp] 媒體已儲存: ${mediaPath}`);
+                    }
+                } catch (err) {
+                    console.error('[WhatsApp] 下載媒體失敗:', err.message);
+                }
+            }
+            
             try {
                 this.gateway.receiveMessage('whatsapp', {
                     chatId: msg.from,
@@ -56,6 +72,8 @@ class WhatsAppAdapter {
                     senderId: msg.author || msg.from,
                     text: msg.body,
                     hasMedia: msg.hasMedia,
+                    mediaPath: mediaPath,
+                    mediaMimeType: mediaMimeType,
                     messageId: msg.id._serialized,
                     fromMe: msg.fromMe,
                     raw: msg
@@ -115,6 +133,54 @@ class WhatsAppAdapter {
         console.log('[WhatsApp] 正在初始化...');
         await this.client.initialize();
     }
+
+    /**
+     * 儲存媒體檔案到本地
+     * @param {MessageMedia} media - 媒體物件
+     * @param {string} messageId - 訊息 ID（用於檔名）
+     * @returns {string} 儲存的檔案路徑
+     */
+    async saveMedia(media, messageId) {
+        // 建立 media 資料夾
+        const mediaDir = path.join(__dirname, '../../media');
+        if (!fs.existsSync(mediaDir)) {
+            fs.mkdirSync(mediaDir, { recursive: true });
+        }
+        
+        // 根據 mimetype 決定副檔名
+        const ext = this.getExtensionFromMime(media.mimetype);
+        const filename = `${Date.now()}_${messageId.replace(/[^a-zA-Z0-9]/g, '_')}${ext}`;
+        const filePath = path.join(mediaDir, filename);
+        
+        // 將 base64 轉成檔案
+        const buffer = Buffer.from(media.data, 'base64');
+        fs.writeFileSync(filePath, buffer);
+        
+        return filePath;
+    }
+
+    /**
+     * 根據 MIME type 取得副檔名
+     */
+    getExtensionFromMime(mimetype) {
+        const mimeMap = {
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/webp': '.webp',
+            'video/mp4': '.mp4',
+            'video/3gpp': '.3gp',
+            'audio/ogg': '.ogg',
+            'audio/mpeg': '.mp3',
+            'audio/mp4': '.m4a',
+            'application/pdf': '.pdf',
+            'application/msword': '.doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        };
+        
+        return mimeMap[mimetype] || '.bin';
+    }
 }
+
 
 module.exports = WhatsAppAdapter;

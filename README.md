@@ -123,6 +123,7 @@ The MCP server provides these tools for Kiro:
 | `list_skills` | List available Agent Skills |
 | `load_skill` | Load a specific skill's content |
 | `get_weather` | Query weather for any location (via wttr.in) |
+| `restart_gateway` | Restart Gateway (requires PM2) |
 
 ### Weather Example
 
@@ -139,7 +140,6 @@ get_weather({ location: "Tokyo" })
 | `/api/reply` | POST | Send text message |
 | `/api/reply/media` | POST | Send media file |
 | `/api/health` | GET | Health check |
-| `/api/messages` | GET | Get pending messages |
 
 ### Send Message Example
 

@@ -123,6 +123,7 @@ MCP server 提供以下工具給 Kiro：
 | `list_skills` | 列出可用的 Agent Skills |
 | `load_skill` | 載入指定 skill 的內容 |
 | `get_weather` | 查詢天氣（透過 wttr.in） |
+| `restart_gateway` | 重啟 Gateway（需要 PM2） |
 
 ### 天氣查詢範例
 
@@ -139,7 +140,6 @@ get_weather({ location: "Tokyo" })
 | `/api/reply` | POST | 發送文字訊息 |
 | `/api/reply/media` | POST | 發送媒體檔案 |
 | `/api/health` | GET | 健康檢查 |
-| `/api/messages` | GET | 取得待處理訊息 |
 
 ### 發送訊息範例
 
