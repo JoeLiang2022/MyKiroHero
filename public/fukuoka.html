@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🇯🇵 福岡行程 5/1-5/5</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;line-height:1.6;padding-bottom:40px}
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:24px 16px;text-align:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #333}
+.header h1{font-size:1.4em;color:#fff}
+.header p{color:#888;font-size:0.85em;margin-top:4px}
+.warn{background:#2d2000;border:1px solid #f59e0b;border-radius:8px;padding:12px;margin:16px;font-size:0.85em;color:#fbbf24}
+.day{margin:16px;border-radius:12px;overflow:hidden;background:#1a1a2e;border:1px solid #2a2a4a}
+.dh{padding:14px 16px;font-weight:700;font-size:1.05em;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.dh .e{font-size:1.3em}
+.dh .arrow{margin-left:auto;transition:transform .2s;font-size:0.8em;color:#666}
+.dh.collapsed .arrow{transform:rotate(-90deg)}
+.d1 .dh{background:linear-gradient(90deg,#1e3a5f,#1a1a2e);color:#60a5fa}
+.d2 .dh{background:linear-gradient(90deg,#1e4d3a,#1a1a2e);color:#34d399}
+.d3 .dh{background:linear-gradient(90deg,#4a1e5f,#1a1a2e);color:#c084fc}
+.d4 .dh{background:linear-gradient(90deg,#5f3a1e,#1a1a2e);color:#fb923c}
+.d5 .dh{background:linear-gradient(90deg,#5f1e1e,#1a1a2e);color:#f87171}
+.dc{overflow:hidden;transition:max-height .3s ease}
+.dc.hide{max-height:0!important}
+.i{padding:12px 16px;border-top:1px solid #222}
+.t{color:#888;font-size:0.8em;font-weight:600;margin-bottom:2px}
+.p{font-weight:600;font-size:0.95em;color:#fff}
+.d{font-size:0.82em;color:#aaa;margin-top:2px}
+.tr{display:flex;align-items:center;gap:8px;padding:8px 16px;background:#111;font-size:0.8em;color:#6ee7b7;border-top:1px solid #222;flex-wrap:wrap}
+.tr .ic{font-size:1.1em;min-width:20px;text-align:center}
+.tr .dt{color:#999}
+.c{color:#fbbf24;font-weight:600}
+.f{color:#fb923c}
+.tip{background:#1a2332;border-left:3px solid #3b82f6;padding:8px 12px;margin:0;font-size:0.8em;color:#93c5fd;border-top:1px solid #222}
+.budget{margin:16px;background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:16px}
+.budget h3{color:#fbbf24;margin-bottom:12px;font-size:1em}
+.br{display:flex;justify-content:space-between;padding:6px 0;font-size:0.85em;border-bottom:1px solid #222}
+.br:last-child{border:none;font-weight:700;color:#fbbf24;padding-top:10px}
+.hotel{margin:16px;background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:16px}
+.hotel h3{color:#60a5fa;margin-bottom:12px;font-size:1em}
+.hotel li{font-size:0.85em;margin-bottom:8px;list-style:none;padding-left:0}
+.hotel li::before{content:'🏨 '}
+.footer{text-align:center;padding:24px;color:#555;font-size:0.75em}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🇯🇵 福岡 5 日行程</h1>
+  <p>2026/5/1（五）— 5/5（二）・2 人・點擊日期可收合</p>
+</div>
+
+<div class="warn">⚠️ 5/1-5/5 正好是日本黃金週（4/29-5/6），景點擁擠，住宿和 JR 指定席建議盡早預訂！</div>
+
+<!-- Day 1 -->
+<div class="day d1">
+  <div class="dh" onclick="toggle(this)"><span class="e">✈️</span> Day 1 — 5/1（五）抵達福岡<span class="arrow">▼</span></div>
+  <div class="dc">
+    <div class="i"><div class="t">16:25</div><div class="p">桃園機場出發</div><div class="d">CI116 華航・飛行約 2.5 小時</div></div>
+    <div class="i"><div class="t">19:35</div><div class="p">抵達福岡機場</div></div>
+    <div class="tr"><span class="ic">🚌</span><span>國際線 → 國內線航廈</span><span class="dt">免費接駁巴士・10 分鐘</span></div>
+    <div class="tr"><span class="ic">🚇</span><span>福岡機場站 → 博多站</span><span class="dt">地鐵空港線 2 站・5 分鐘・<span class="c">¥260</span></span></div>
+    <div class="i"><div class="t">20:15</div><div class="p">Check-in 飯店（博多站周邊）</div></div>
+    <div class="tr"><span class="ic">🚶</span><span>博多站 → 中洲屋台</span><span class="dt">步行 15 分鐘 / 地鐵 1 站到中洲川端</span></div>
+    <div class="i"><div class="t">20:45</div><div class="p">🍜 晚餐：中洲屋台街</div><div class="d f">博多拉麵、煎餃、關東煮・屋台營業到凌晨不用趕</div></div>
+    <div class="i"><div class="t">22:30</div><div class="p">回飯店休息</div></div>
+  </div>
+</div>
+
+<!-- Day 2 -->
+<div class="day d2">
+  <div class="dh" onclick="toggle(this)"><span class="e">🏔️</span> Day 2 — 5/2（六）由布院一日遊<span class="arrow">▼</span></div>
+  <div class="dc">
+    <div class="tr"><span class="ic">🚃</span><span>博多站 → 由布院站</span><span class="dt">JR 特急「由布院之森」・2hr 15min・<span class="c">¥4,640</span></span></div>
+    <div class="tip">⚠️ 黃金週超熱門，建議提前在 JR 九州官網訂指定席！班次 09:24 / 10:00 發</div>
+    <div class="i"><div class="t">09:24</div><div class="p">博多站出發</div><div class="d">搭早班由布院之森觀光列車</div></div>
+    <div class="i"><div class="t">11:40</div><div class="p">抵達由布院</div></div>
+    <div class="i"><div class="t">12:00</div><div class="p">🍜 午餐：由布まぶし 心</div><div class="d f">地雞飯三吃・車站步行 3 分鐘</div></div>
+    <div class="i"><div class="t">13:00</div><div class="p">由布院散策</div><div class="d">🚶 全程步行，景點集中一條路上<br>• 湯之坪街道（甜點、雜貨小店）30 min<br>• B-speak 蛋糕捲（排隊名店）<br>• 由布院花卉村 20 min<br>• 金鱗湖 15 min（從車站步行 25 分鐘）</div></div>
+    <div class="i"><div class="t">15:30</div><div class="p">♨️ 日歸溫泉</div><div class="d">「山のホテル 夢想園」或「庄屋の館」・<span class="c">¥800-1,000</span></div></div>
+    <div class="tr"><span class="ic">🚃</span><span>由布院站 → 博多站</span><span class="dt">JR 特急・2hr 15min・班次 16:45 / 17:30 發</span></div>
+    <div class="i"><div class="t">19:00</div><div class="p">回到博多</div></div>
+    <div class="tr"><span class="ic">🚶</span><span>博多站 → 中洲</span><span class="dt">步行 15 分鐘 / 地鐵到天神 5 分鐘再步行 5 分鐘</span></div>
+    <div class="i"><div class="t">19:30</div><div class="p">🍜 晚餐：一蘭拉麵總本店（中洲）</div><div class="d f">或 一風堂 大名本店</div></div>
+  </div>
+</div>
+
+<!-- Day 3 -->
+<div class="day d3">
+  <div class="dh" onclick="toggle(this)"><span class="e">⛩️</span> Day 3 — 5/3（日）太宰府 + 柳川<span class="arrow">▼</span></div>
+  <div class="dc">
+    <div class="tr"><span class="ic">🚇</span><span>博多站 → 天神站</span><span class="dt">地鐵空港線 1 站・5 分鐘・<span class="c">¥210</span></span></div>
+    <div class="tr"><span class="ic">🚶</span><span>天神站 → 西鐵福岡（天神）站</span><span class="dt">步行 5 分鐘（地下街連通）</span></div>
+    <div class="tr"><span class="ic">🚃</span><span>西鐵福岡 → 二日市 → 太宰府</span><span class="dt">西鐵電車・35 分鐘（二日市轉太宰府線）・<span class="c">¥420</span></span></div>
+    <div class="i"><div class="t">09:30</div><div class="p">抵達太宰府</div></div>
+    <div class="i"><div class="t">09:35</div><div class="p">⛩️ 太宰府天滿宮</div><div class="d">🚶 車站步行 5 分鐘（沿表參道）<br>• 表參道：梅枝餅（¥130/個）、星巴克概念店<br>• 天滿宮參拜（學問之神）約 30 min<br>• 九州國立博物館（天滿宮走過去 10 min，選去）</div></div>
+    <div class="i"><div class="t">11:30</div><div class="p">離開太宰府</div></div>
+    <div class="tr"><span class="ic">🚃</span><span>太宰府 → 二日市 → 西鐵柳川</span><span class="dt">西鐵電車・50 分鐘・<span class="c">¥570</span></span></div>
+    <div class="i"><div class="t">12:30</div><div class="p">抵達柳川</div></div>
+    <div class="tr"><span class="ic">🚶</span><span>西鐵柳川站 → 遊船乘船處</span><span class="dt">步行 5 分鐘</span></div>
+    <div class="i"><div class="t">13:00</div><div class="p">🛶 柳川遊船</div><div class="d">護城河遊覽・約 70 分鐘・<span class="c">¥1,800/人</span></div></div>
+    <div class="i"><div class="t">14:30</div><div class="p">🍜 午餐：鰻魚飯</div><div class="d f">「元祖本吉屋」或「若松屋」・下船處步行 3 分鐘・<span class="c">¥2,500-3,500/人</span></div></div>
+    <div class="tr"><span class="ic">🚃</span><span>西鐵柳川 → 西鐵福岡（天神）</span><span class="dt">西鐵特急・50 分鐘・<span class="c">¥870</span></span></div>
+    <div class="i"><div class="t">16:30</div><div class="p">回到天神</div><div class="d">天神地下街 / 大丸百貨逛街（選配）</div></div>
+    <div class="tr"><span class="ic">🚶</span><span>天神 → 春吉</span><span class="dt">步行 8 分鐘</span></div>
+    <div class="i"><div class="t">19:00</div><div class="p">🍜 晚餐：もつ鍋（牛腸鍋）</div><div class="d f">「おおやま 本店」・<span class="c">¥1,500-2,000/人</span></div></div>
+    <div class="tr"><span class="ic">🚇</span><span>天神 → 博多</span><span class="dt">地鐵・5 分鐘・回飯店</span></div>
+  </div>
+</div>
+
+<!-- Day 4 -->
+<div class="day d4">
+  <div class="dh" onclick="toggle(this)"><span class="e">🏙️</span> Day 4 — 5/4（一）福岡市區深度<span class="arrow">▼</span></div>
+  <div class="dc">
+    <div class="tip">💡 全天步行 + 地鐵，不需長途移動</div>
+    <div class="i"><div class="t">09:00</div><div class="p">博多站出發</div></div>
+    <div class="tr"><span class="ic">🚶</span><span>博多站 → 櫛田神社</span><span class="dt">步行 10 分鐘</span></div>
+    <div class="i"><div class="t">09:15</div><div class="p">⛩️ 櫛田神社</div><div class="d">博多總鎮守・15 min</div></div>
+    <div class="i"><div class="t">09:30</div><div class="p">博多町家故鄉館</div><div class="d">隔壁・15 min</div></div>
+    <div class="tr"><span class="ic">🚶</span><span>→ 川端商店街</span><span class="dt">步行 5 分鐘</span></div>
+    <div class="i"><div class="t">10:00</div><div class="p">🛍️ 川端商店街</div><div class="d">逛 30 min</div></div>
+    <div class="tr"><span class="ic">🚶</span><span>→ Canal City Hakata</span><span class="dt">步行 3 分鐘</span></div>
+    <div class="i"><div class="t">10:30</div><div class="p">🛍️ Canal City Hakata</div><div class="d">運河城購物・1-1.5hr</div></div>
+    <div class="i"><div class="t">12:00</div><div class="p">🍜 午餐</div><div class="d f">Canal City 美食街 或 博多デイトス</div></div>
+    <div class="tr"><span class="ic">🚇</span><span>博多 → 天神</span><span class="dt">地鐵・5 分鐘・<span class="c">¥210</span></span></div>
+    <div class="i"><div class="t">13:30</div><div class="p">🛍️ 天神購物</div><div class="d">天神地下街（約 1hr）・博多阪急 / 大丸百貨</div></div>
+    <div class="tr"><span class="ic">🚇</span><span>天神 → 大濠公園</span><span class="dt">地鐵 2 站・4 分鐘・<span class="c">¥210</span></span></div>
+    <div class="i"><div class="t">15:30</div><div class="p">🌿 大濠公園散步</div><div class="d">環湖一圈約 30 min</div></div>
+    <div class="tr"><span class="ic">🚇</span><span>大濠公園 → 西新</span><span class="dt">地鐵 1 站・2 分鐘</span></div>
+    <div class="tr"><span class="ic">🚌</span><span>西新站 → 福岡塔</span><span class="dt">巴士・10 分鐘・<span class="c">¥230</span></span></div>
+    <div class="i"><div class="t">17:00</div><div class="p">🗼 福岡塔看夕陽</div><div class="d">展望台 <span class="c">¥800</span></div></div>
+    <div class="tr"><span class="ic">🚌</span><span>福岡塔 → 天神</span><span class="dt">巴士・20 分鐘</span></div>
+    <div class="tr"><span class="ic">🚇</span><span>天神 → 博多</span><span class="dt">地鐵・5 分鐘</span></div>
+    <div class="i"><div class="t">19:00</div><div class="p">🍜 晚餐：水炊き（雞肉鍋）</div><div class="d f">「華味鳥 博多駅前店」・<span class="c">¥3,000-4,000/人</span></div></div>
+    <div class="i"><div class="t">21:00</div><div class="p">🏮 中洲屋台最後巡禮</div><div class="d">🚶 博多站步行 15 分鐘</div></div>
+  </div>
+</div>
+
+<!-- Day 5 -->
+<div class="day d5">
+  <div class="dh" onclick="toggle(this)"><span class="e">🛫</span> Day 5 — 5/5（二）回程<span class="arrow">▼</span></div>
+  <div class="dc">
+    <div class="i"><div class="t">08:00</div><div class="p">🍜 早餐</div><div class="d f">博多デイトス 明太子定食 或 天神「Ivorish」法式吐司</div></div>
+    <div class="i"><div class="t">09:00</div><div class="p">🛍️ 博多站採買伴手禮</div><div class="d">🚶 站內直達，不用移動<br>• 博多マイング商店街<br>• 博多デイトス<br>🎁 博多通りもん / 明太子（ふくや・やまや）/ 筑紫もち / 博多の女 / 南蠻往來</div></div>
+    <div class="i"><div class="t">10:30</div><div class="p">Check-out</div></div>
+    <div class="tr"><span class="ic">🚇</span><span>博多站 → 福岡機場</span><span class="dt">地鐵空港線 2 站・5 分鐘・<span class="c">¥260</span></span></div>
+    <div class="tr"><span class="ic">🚌</span><span>國內線 → 國際線航廈</span><span class="dt">免費接駁巴士・10 分鐘</span></div>
+    <div class="i"><div class="t">11:00</div><div class="p">抵達國際線航廈</div><div class="d">起飛前 1.5hr・過海關、免稅店最後一逛</div></div>
+    <div class="i"><div class="t">12:35</div><div class="p">✈️ CI117 福岡 → 桃園</div><div class="d">抵達 14:00</div></div>
+  </div>
+</div>
+
+<!-- Budget -->
+<div class="budget">
+  <h3>💰 交通費概估（每人）</h3>
+  <div class="br"><span>地鐵/巴士市區（5天）</span><span>≈ ¥5,000</span></div>
+  <div class="br"><span>由布院 JR 來回</span><span>≈ ¥9,280</span></div>
+  <div class="br"><span>西鐵 太宰府+柳川</span><span>≈ ¥1,860</span></div>
+  <div class="br"><span>合計</span><span>≈ ¥16,140（NT$3,500）</span></div>
+</div>
+
+<div class="tip" style="margin:16px;border-radius:8px">💡 可考慮買「北九州 JR PASS 3日券」¥11,000，涵蓋由布院來回就回本</div>
+
+<!-- Hotel -->
+<div class="hotel">
+  <h3>🏨 住宿建議（博多站/天神，交通最方便）</h3>
+  <ul>
+    <li><b>Dormy Inn 博多祇園</b> — 大浴場、免費宵夜拉麵</li>
+    <li><b>Hotel WBF Grande Hakata</b> — 博多站旁，CP 值高</li>
+    <li><b>Solaria Nishitetsu Hotel</b> — 天神站直結，位置超好</li>
+    <li><b>The B Hakata</b> — 乾淨舒適，價格親民</li>
+  </ul>
+</div>
+
+<div class="footer">
+  😸 波堤製作 — Joe 大神的福岡之旅<br>
+  黃金週住宿會漲價，建議現在就訂！
+</div>
+
+<script>
+function toggle(el){
+  el.classList.toggle('collapsed');
+  const dc=el.nextElementSibling;
+  if(dc.classList.contains('hide')){
+    dc.classList.remove('hide');
+    dc.style.maxHeight=dc.scrollHeight+'px';
+    setTimeout(()=>dc.style.maxHeight='none',300);
+  }else{
+    dc.style.maxHeight=dc.scrollHeight+'px';
+    requestAnimationFrame(()=>{dc.style.maxHeight='0';dc.classList.add('hide')});
+  }
+}
+</script>
+</body>
+</html>
