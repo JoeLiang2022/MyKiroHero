@@ -1,0 +1,7 @@
+# Journal Files Directory
+# Daily journal files are stored here in format: YYYY-MM-DD.md
+# These files are automatically loaded by Kiro for recent context.
+# 
+# Example: memory/2026-02-06.md
+#
+# Files older than 7 days can be deleted after backup to JSONL_Store.

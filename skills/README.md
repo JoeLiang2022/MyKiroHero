@@ -1,44 +1,42 @@
 # Skills Directory
 
-This folder contains Agent Skills that extend the AI assistant's capabilities.
-
-## What are Skills?
-
-Skills are modular capability packages following the [Claude Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) standard. Each skill is a folder containing:
-
-- `SKILL.md` (required) - Instructions and metadata
-- Additional reference files (optional)
-- Scripts (optional)
-
-## Creating a Skill
-
-1. Create a new folder with your skill name
-2. Add a `SKILL.md` file with this format:
-
-```yaml
----
-name: Your Skill Name
-description: Brief description of what this skill does
-triggers: [keyword1, keyword2, 關鍵字]
----
-
-# Detailed Instructions
-
-Write your skill instructions here...
-```
-
-## Installing Skills
-
-Simply copy a skill folder into this `skills/` directory. The system will automatically detect and load it on startup.
+Custom skills for MyKiroHero AI assistant.
 
 ## Available Skills
 
-- **weather/** - Weather queries and forecasts
-- **translator/** - Language translation
+| Skill | Version | Description |
+|-------|---------|-------------|
+| **codebase** | 2.0.0 | Global architecture overview — directory structure, data flow, domain index |
+| **gateway** | 1.0.0 | Gateway core — message flow, WA adapter, routing, handlers |
+| **tasks** | 1.0.0 | Task system — Task Dispatch, Worker management, Layer 1/2/3 |
+| **ai** | 1.0.0 | AI system — Provider management, Router, STT, TTS |
+| **memory** | 2.0.0 | Memory system — JSONL, Journal, Knowledge, Memory Engine |
+| **mcp** | 1.0.0 | MCP Server — 22 tools definition and forwarding |
+| **infra** | 1.0.0 | Infrastructure — deployment, PM2, install scripts, backup/restore |
+| **tools** | 1.0.0 | Common tools — image analysis, weather query, translation |
+| **url-handlers** | 1.0.0 | URL handling rules |
+| **ami-bios** | 1.0.0 | AMI Aptio V BIOS knowledge — SDL/CIF/VEB formats, package structure, analysis SOP |
 
-## Progressive Disclosure
+## Structure
 
-Skills use progressive disclosure to save tokens:
-1. Only `name` and `description` are loaded at startup
-2. Full `SKILL.md` content is loaded when the skill is triggered
-3. Additional files are loaded only when needed
+Each domain skill contains:
+- `SKILL.md` — Architecture document (with trigger keywords)
+- `CHANGELOG.md` — Worker change log (Commander merges into SKILL.md during heartbeat)
+
+## SKILL.md Format
+
+```yaml
+---
+name: skill-name
+description: >
+  Description with trigger keywords.
+version: 1.0.0
+allowed-tools: [tool1, tool2]
+---
+```
+
+## Maintenance Cycle
+
+1. Worker completes task → append changes to corresponding domain's CHANGELOG.md
+2. Commander heartbeat → merge CHANGELOG into SKILL.md
+3. Next query loads the latest SKILL.md

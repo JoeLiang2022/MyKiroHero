@@ -1,0 +1,386 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-02-09",
+  "providers": [
+    {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "website": "https://aistudio.google.com/apikey",
+      "envKey": "GEMINI_API_KEY",
+      "keyPattern": "^AIza[0-9A-Za-z_-]{35}$",
+      "freeTier": {
+        "available": true,
+        "note": "Free API key at aistudio.google.com/apikey (rate limited)"
+      },
+      "capabilities": ["image", "tts", "stt"],
+      "mcpServer": {
+        "type": "python",
+        "command": "uvx",
+        "args": ["gemini-gen-mcp"],
+        "note": "ServiceStack gemini-gen-mcp: image generation + TTS. STT via Gemini API directly (no MCP server needed)",
+        "envMapping": {
+          "GEMINI_API_KEY": "GEMINI_API_KEY"
+        }
+      },
+      "models": [
+        {
+          "id": "gemini-3-pro-image-preview",
+          "name": "Gemini 3 Pro Image Preview (Nano Banana Pro)",
+          "capability": "image",
+          "default": true,
+          "status": "preview",
+          "note": "Highest quality image generation, up to 4K, multi-image fusion"
+        },
+        {
+          "id": "gemini-2.5-flash-image",
+          "name": "Gemini 2.5 Flash Image (Nano Banana)",
+          "capability": "image",
+          "default": false,
+          "status": "stable",
+          "note": "Fast and efficient, optimized for high-volume low-latency"
+        },
+        {
+          "id": "gemini-2.5-pro-preview-tts",
+          "name": "Gemini 2.5 Pro Preview TTS",
+          "capability": "tts",
+          "default": true,
+          "status": "preview",
+          "note": "Highest quality TTS, single + multi-speaker, 70+ languages"
+        },
+        {
+          "id": "gemini-2.5-flash-preview-tts",
+          "name": "Gemini 2.5 Flash Preview TTS",
+          "capability": "tts",
+          "default": false,
+          "status": "preview",
+          "note": "Fast TTS, single + multi-speaker, 70+ languages"
+        },
+        {
+          "id": "gemini-3-flash-preview",
+          "name": "Gemini 3 Flash Preview",
+          "capability": "stt",
+          "default": true,
+          "status": "preview",
+          "note": "Multimodal audio transcription, fast and efficient"
+        },
+        {
+          "id": "gemini-2.5-flash",
+          "name": "Gemini 2.5 Flash",
+          "capability": "stt",
+          "default": false,
+          "status": "stable",
+          "note": "Stable multimodal audio transcription"
+        }
+      ]
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "website": "https://platform.openai.com/api-keys",
+      "envKey": "OPENAI_API_KEY",
+      "keyPattern": "^sk-[A-Za-z0-9_-]{20,}$",
+      "freeTier": {
+        "available": false,
+        "note": "Pay-as-you-go, new accounts get $5 free credits"
+      },
+      "capabilities": ["image", "tts", "stt"],
+      "mcpServer": {
+        "type": "npm",
+        "command": "npx",
+        "args": ["-y", "imagegen-mcp"],
+        "note": "imagegen-mcp supports DALL-E and GPT Image models",
+        "envMapping": {
+          "OPENAI_API_KEY": "OPENAI_API_KEY"
+        }
+      },
+      "models": [
+        {
+          "id": "gpt-image-1.5",
+          "name": "GPT Image 1.5",
+          "capability": "image",
+          "default": true,
+          "status": "stable",
+          "note": "State of the art image generation, best quality"
+        },
+        {
+          "id": "gpt-image-1",
+          "name": "GPT Image 1",
+          "capability": "image",
+          "default": false,
+          "status": "stable",
+          "note": "Superior instruction following, text rendering"
+        },
+        {
+          "id": "gpt-image-1-mini",
+          "name": "GPT Image 1 Mini",
+          "capability": "image",
+          "default": false,
+          "status": "stable",
+          "note": "Cost-effective option, lower quality"
+        },
+        {
+          "id": "dall-e-3",
+          "name": "DALL-E 3",
+          "capability": "image",
+          "default": false,
+          "status": "deprecated",
+          "deprecationDate": "2026-05-12",
+          "note": "Deprecated, will stop working 2026-05-12"
+        },
+        {
+          "id": "dall-e-2",
+          "name": "DALL-E 2",
+          "capability": "image",
+          "default": false,
+          "status": "deprecated",
+          "deprecationDate": "2026-05-12",
+          "note": "Deprecated, will stop working 2026-05-12"
+        },
+        {
+          "id": "gpt-4o-mini-tts",
+          "name": "GPT-4o Mini TTS",
+          "capability": "tts",
+          "default": true,
+          "status": "stable",
+          "note": "Controllable tone, emotion, speed. 10 preset voices"
+        },
+        {
+          "id": "tts-1-hd",
+          "name": "TTS-1 HD",
+          "capability": "tts",
+          "default": false,
+          "status": "stable",
+          "note": "High quality text-to-speech"
+        },
+        {
+          "id": "tts-1",
+          "name": "TTS-1",
+          "capability": "tts",
+          "default": false,
+          "status": "stable",
+          "note": "Standard quality, lower latency"
+        },
+        {
+          "id": "gpt-4o-transcribe",
+          "name": "GPT-4o Transcribe",
+          "capability": "stt",
+          "default": true,
+          "status": "stable",
+          "note": "Best accuracy, handles accents and noisy environments"
+        },
+        {
+          "id": "gpt-4o-mini-transcribe",
+          "name": "GPT-4o Mini Transcribe",
+          "capability": "stt",
+          "default": false,
+          "status": "stable",
+          "note": "Lighter, faster, lower latency"
+        },
+        {
+          "id": "whisper-1",
+          "name": "Whisper",
+          "capability": "stt",
+          "default": false,
+          "status": "stable",
+          "note": "Classic STT model, widely supported"
+        }
+      ]
+    },
+    {
+      "id": "elevenlabs",
+      "name": "ElevenLabs",
+      "website": "https://elevenlabs.io/app/settings/api-keys",
+      "envKey": "ELEVENLABS_API_KEY",
+      "keyPattern": "^[a-f0-9]{32}$",
+      "freeTier": {
+        "available": true,
+        "note": "10,000 characters/month free"
+      },
+      "capabilities": ["tts", "stt"],
+      "mcpServer": {
+        "type": "python",
+        "command": "uvx",
+        "args": ["elevenlabs-mcp"],
+        "envMapping": {
+          "ELEVENLABS_API_KEY": "ELEVENLABS_API_KEY"
+        }
+      },
+      "models": [
+        {
+          "id": "eleven_v3",
+          "name": "Eleven v3",
+          "capability": "tts",
+          "default": true,
+          "status": "stable",
+          "note": "Most expressive, emotional, 70+ languages, multi-speaker dialogue"
+        },
+        {
+          "id": "eleven_multilingual_v2",
+          "name": "Eleven Multilingual v2",
+          "capability": "tts",
+          "default": false,
+          "status": "stable",
+          "note": "Lifelike, consistent, 29 languages, best for long-form"
+        },
+        {
+          "id": "eleven_flash_v2_5",
+          "name": "Eleven Flash v2.5",
+          "capability": "tts",
+          "default": false,
+          "status": "stable",
+          "note": "Ultra-fast ~75ms, real-time optimized, multilingual"
+        },
+        {
+          "id": "eleven_turbo_v2_5",
+          "name": "Eleven Turbo v2.5",
+          "capability": "tts",
+          "default": false,
+          "status": "stable",
+          "note": "Balance of quality and speed ~250ms, multilingual"
+        },
+        {
+          "id": "eleven_flash_v2",
+          "name": "Eleven Flash v2",
+          "capability": "tts",
+          "default": false,
+          "status": "stable",
+          "note": "Ultra-fast ~75ms, English only"
+        },
+        {
+          "id": "eleven_turbo_v2",
+          "name": "Eleven Turbo v2",
+          "capability": "tts",
+          "default": false,
+          "status": "stable",
+          "note": "Balance of quality and speed ~250ms, English only"
+        },
+        {
+          "id": "scribe_v2",
+          "name": "Scribe v2",
+          "capability": "stt",
+          "default": true,
+          "status": "stable",
+          "note": "State-of-the-art STT, 90+ languages"
+        },
+        {
+          "id": "scribe_v2_realtime",
+          "name": "Scribe v2 Realtime",
+          "capability": "stt",
+          "default": false,
+          "status": "stable",
+          "note": "Real-time STT, 90+ languages"
+        },
+        {
+          "id": "scribe_v1",
+          "name": "Scribe v1",
+          "capability": "stt",
+          "default": false,
+          "status": "stable",
+          "note": "Previous gen STT, outclassed by v2"
+        }
+      ]
+    },
+    {
+      "id": "stability",
+      "name": "Stability AI",
+      "website": "https://platform.stability.ai/account/keys",
+      "envKey": "STABILITY_API_KEY",
+      "keyPattern": "^sk-[A-Za-z0-9]{48,}$",
+      "freeTier": {
+        "available": false,
+        "note": "Pay-as-you-go, credits system"
+      },
+      "capabilities": ["image"],
+      "mcpServer": {
+        "type": "npm",
+        "command": "npx",
+        "args": ["-y", "mcp-server-stability-ai"],
+        "envMapping": {
+          "STABILITY_AI_API_KEY": "STABILITY_API_KEY"
+        }
+      },
+      "models": [
+        {
+          "id": "stable-image-ultra",
+          "name": "Stable Image Ultra",
+          "capability": "image",
+          "default": true,
+          "status": "stable",
+          "note": "Highest quality, powered by SD3.5 Large ($0.08/image)"
+        },
+        {
+          "id": "stable-image-core",
+          "name": "Stable Image Core",
+          "capability": "image",
+          "default": false,
+          "status": "stable",
+          "note": "Speed and cost optimized ($0.03/image)"
+        },
+        {
+          "id": "sd3.5-large",
+          "name": "Stable Diffusion 3.5 Large",
+          "capability": "image",
+          "default": false,
+          "status": "stable",
+          "note": "Open model, high quality, typography, complex prompts"
+        },
+        {
+          "id": "sd3.5-large-turbo",
+          "name": "Stable Diffusion 3.5 Large Turbo",
+          "capability": "image",
+          "default": false,
+          "status": "stable",
+          "note": "Faster inference with distillation, fewer steps needed"
+        },
+        {
+          "id": "sd3.5-medium",
+          "name": "Stable Diffusion 3.5 Medium",
+          "capability": "image",
+          "default": false,
+          "status": "stable",
+          "note": "Balanced quality and efficiency, runs on consumer hardware"
+        }
+      ]
+    },
+    {
+      "id": "xai",
+      "name": "xAI Grok",
+      "website": "https://console.x.ai",
+      "envKey": "XAI_API_KEY",
+      "keyPattern": "^xai-[A-Za-z0-9]{40,}$",
+      "freeTier": {
+        "available": true,
+        "note": "$25 free credits on signup + $150/month with data sharing"
+      },
+      "capabilities": ["image"],
+      "mcpServer": {
+        "type": "npm",
+        "command": "npx",
+        "args": ["-y", "grok-mcp"],
+        "note": "Community MCP server for xAI Grok API",
+        "envMapping": {
+          "XAI_API_KEY": "XAI_API_KEY"
+        }
+      },
+      "models": [
+        {
+          "id": "grok-2-image",
+          "name": "Grok 2 Image (Aurora)",
+          "capability": "image",
+          "default": true,
+          "status": "stable",
+          "note": "Autoregressive MoE model, photorealistic, fast 3-5s"
+        },
+        {
+          "id": "grok-2-image-1212",
+          "name": "Grok 2 Image 1212",
+          "capability": "image",
+          "default": false,
+          "status": "deprecated",
+          "deprecationDate": "2026-02-28",
+          "note": "Deprecated Feb 28 2026, migrate to grok-2-image"
+        }
+      ]
+    }
+  ]
+}

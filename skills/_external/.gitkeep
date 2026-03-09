@@ -1,0 +1,21 @@
+# External Skills Folder
+
+This folder contains skills downloaded from external sources.
+Each skill should have its own subfolder with a SKILL.md file.
+
+## Metadata Fields for External Skills
+
+External SKILL.md files should include:
+- `source`: Where the skill came from (e.g., "vercel-labs", "anthropic")
+- `source-url`: Original URL of the skill
+
+Example:
+```yaml
+---
+name: example-skill
+description: An example external skill
+version: 1.0.0
+source: github
+source-url: https://github.com/example/skill
+---
+```

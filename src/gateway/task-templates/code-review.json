@@ -1,0 +1,9 @@
+{
+  "name": "code-review",
+  "description": "Code review task template",
+  "requiredFields": ["description", "files"],
+  "optionalFields": ["focusAreas"],
+  "defaultTimeout": 300,
+  "defaultBranchPattern": "worker/review-{{taskId}}",
+  "promptTemplate": "[TASK] {{taskId}}\naction: code-review\nbranch: {{branch}}\nfiles: {{files}}\ndescription: {{description}}\n{{#focusAreas}}\nFocus areas:\n{{focusAreas}}\n{{/focusAreas}}\n---\nReview the specified files. Report findings via report_task_result.\nDo NOT make changes unless explicitly asked."
+}

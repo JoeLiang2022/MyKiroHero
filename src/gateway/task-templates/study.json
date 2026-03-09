@@ -1,0 +1,9 @@
+{
+  "name": "study",
+  "description": "Code study / analysis task template",
+  "requiredFields": ["description", "files"],
+  "optionalFields": ["outputFormat"],
+  "defaultTimeout": 300,
+  "defaultBranchPattern": "worker/study-{{taskId}}",
+  "promptTemplate": "[TASK] {{taskId}}\naction: study\nbranch: {{branch}}\nfiles: {{files}}\ndescription: {{description}}\n{{#outputFormat}}\nOutput format:\n{{outputFormat}}\n{{/outputFormat}}\n---\nStudy the specified files and report findings via report_task_result.\nDo NOT make changes to the code."
+}

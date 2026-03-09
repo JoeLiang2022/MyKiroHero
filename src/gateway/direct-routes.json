@@ -1,0 +1,11 @@
+{
+  "routes": [
+    {
+      "name": "weather",
+      "enabled": true,
+      "handler": "weather",
+      "patterns": ["^天氣", "^weather", "^氣溫", "^溫度"],
+      "description": "天氣查詢直接回覆"
+    }
+  ]
+}

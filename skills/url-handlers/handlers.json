@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "handlers": [
+    {
+      "id": "github-blob",
+      "name": "GitHub Blob",
+      "pattern": "github\\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)",
+      "method": "github-api",
+      "tool": "mcp_github_get_file_contents",
+      "params": {
+        "owner": "$1",
+        "repo": "$2",
+        "branch": "$3",
+        "path": "$4"
+      },
+      "dependencies": ["github-mcp"],
+      "notes": "用 GitHub MCP API 抓取檔案內容"
+    },
+    {
+      "id": "github-raw",
+      "name": "GitHub Raw",
+      "pattern": "raw\\.githubusercontent\\.com/",
+      "method": "direct-download",
+      "tool": "download_file",
+      "dependencies": [],
+      "notes": "直接下載，不需轉換"
+    }
+  ]
+}

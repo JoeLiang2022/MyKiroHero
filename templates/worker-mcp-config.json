@@ -1,0 +1,17 @@
+{
+  "_comment": "⚠️ This is ${WORKER_ID}'s MCP config — DO NOT use for Commander",
+  "mcpServers": {
+    "mykiro-gateway": {
+      "command": "node",
+      "args": ["${REPO_PATH}/src/mcp-server.js"],
+      "env": {
+        "X_WORKER_ID": "${WORKER_ID}",
+        "X_WORKER_PORT": "${WORKER_PORT}"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "*"
+      ]
+    }
+  }
+}

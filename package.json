@@ -1,29 +1,69 @@
 {
-  "name": "mykiro-gateway",
+  "name": "mykiro-hero",
   "version": "0.1.0",
-  "description": "AI-powered WhatsApp/Telegram gateway for Kiro and other AI tools",
-  "main": "index.js",
+  "description": "Turn Kiro AI into your WhatsApp assistant - no extra API key needed",
+  "main": "src/gateway/index.js",
+  "bin": {
+    "mykiro-hero": "./install.js"
+  },
   "scripts": {
-    "whatsapp": "node src/whatsapp/client.js",
-    "telegram": "node src/telegram/client.js",
-    "telegram:bot": "node src/telegram/bot.js",
-    "gateway": "node src/gateway/index.js",
     "start": "node src/gateway/index.js",
+    "gateway": "node src/gateway/index.js",
+    "dashboard": "node scripts/open-dashboard.js",
+    "install-wizard": "node install.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:memory": "jest --testPathPattern=tests/memory",
+    "test:install": "node install.js --test",
     "release:patch": "npm version patch && git push && git push --tags",
     "release:minor": "npm version minor && git push && git push --tags",
     "release:major": "npm version major && git push && git push --tags"
   },
+  "keywords": [
+    "kiro",
+    "whatsapp",
+    "ai",
+    "assistant",
+    "chatbot",
+    "mcp",
+    "automation"
+  ],
+  "author": "NorlWu-TW",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NorlWu-TW/MyKiroHero.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NorlWu-TW/MyKiroHero/issues"
+  },
+  "homepage": "https://github.com/NorlWu-TW/MyKiroHero#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
+    "better-sqlite3": "^12.6.2",
     "chalk": "^4.1.2",
+    "cheerio": "^1.2.0",
+    "docx": "^9.5.1",
     "dotenv": "^16.3.1",
+    "exceljs": "^4.4.0",
     "express": "^4.18.2",
+    "ffmpeg-static": "^5.3.0",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.17.2",
+    "pptxgenjs": "^4.0.1",
     "qrcode-terminal": "^0.12.0",
     "telegraf": "^4.15.0",
+    "turndown": "^7.2.2",
     "whatsapp-web.js": "^1.26.0",
     "ws": "^8.14.2"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.0",
+    "fast-check": "^4.5.3",
+    "jest": "^30.2.0"
   }
 }

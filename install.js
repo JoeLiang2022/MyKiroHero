@@ -1,204 +1,539 @@
 #!/usr/bin/env node
 /**
- * MyKiroHero 跨平台安裝腳本
- * 支援 Windows / Mac / Linux
- * 
+ * MyKiroHero Cross-platform Install Script — Orchestrator
+ * Supports Windows / Mac / Linux
+ *
  * 用法：
- *   node install.js          # 正常安裝（互動式）
- *   node install.js --test   # 自動測試模式
- *   或
- *   npx mykiro-hero (未來發布到 npm 後)
+ *   node install.js             # 正常安裝（互動式）
+ *   node install.js --test      # 自動測試模式
+ *   node install.js --upgrade   # 升級模式（保留設定，更新程式碼）
+ *   node install.js --restore   # 從 GitHub 備份還原記憶
+ *   node install.js --manage-ai # AI Provider 管理
  */
 
 const fs = require('fs');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
-const readline = require('readline');
+const { execSync } = require('child_process');
 
-// 測試模式
+// Windows: set console output to UTF-8
+if (process.platform === 'win32') {
+    try {
+        execSync('chcp 65001', { stdio: 'ignore' });
+        if (process.stdout.setEncoding) process.stdout.setEncoding('utf8');
+        if (process.stderr.setEncoding) process.stderr.setEncoding('utf8');
+    } catch { /* ignore */ }
+    process.env.PYTHONIOENCODING = 'utf-8';
+    process.env.LANG = 'en_US.UTF-8';
+}
+
+// Mode flags
 const isTestMode = process.argv.includes('--test');
+const isUpgradeMode = process.argv.includes('--upgrade');
+const isManageAiMode = process.argv.includes('--manage-ai');
+const isRestoreMode = process.argv.includes('--restore');
 
-// 讀取版本號
+// Git command (default 'git', user may override in env-check)
+let gitCmd = 'git';
+
+// Read version
 const packageJson = require('./package.json');
 const VERSION = packageJson.version;
 
-// 平台偵測
+// Platform detection
 const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
-const isLinux = process.platform === 'linux';
 
-// 顏色輸出
-const colors = {
-    reset: '\x1b[0m',
-    cyan: '\x1b[36m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-    red: '\x1b[31m',
-    white: '\x1b[37m',
-};
+// Shared utilities
+const { log, logStep, createPrompt, ask, exec, commandExists } = require('./install/utils');
+const i18n = require('./install/i18n');
 
-function log(msg, color = 'white') {
-    console.log(`${colors[color]}${msg}${colors.reset}`);
-}
+// Step modules
+const envCheck = require('./install/steps/env-check');
+const projectSetup = require('./install/steps/project-setup');
+const personalize = require('./install/steps/personalize');
+const aiSetup = require('./install/steps/ai-setup');
+const launch = require('./install/steps/launch');
 
-function logStep(step, total, msg) {
-    log(`[${step}/${total}] ${msg}`, 'cyan');
-}
+// ─── upgrade() — reuses step modules where possible ───
 
-// 互動式問答
-function createPrompt() {
-    return readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-}
+async function upgrade() {
+    const projectDir = process.cwd();
+    const pkgPath = path.join(projectDir, 'package.json');
 
-async function ask(rl, question, defaultValue = '') {
-    // 測試模式：自動使用預設值
-    if (isTestMode) {
-        log(`  [TEST] Auto answer: "${defaultValue}"`, 'yellow');
-        return defaultValue;
+    if (!fs.existsSync(pkgPath)) {
+        log('✗ Not inside MyKiroHero project directory', 'red');
+        log('  Please run from the MyKiroHero folder', 'yellow');
+        process.exit(1);
     }
-    return new Promise(resolve => {
-        rl.question(question, answer => resolve(answer.trim()));
-    });
-}
-
-// 執行指令
-function exec(cmd, options = {}) {
+    let pkg;
     try {
-        return execSync(cmd, { 
-            encoding: 'utf-8', 
-            stdio: options.silent ? 'pipe' : 'inherit',
-            ...options 
-        });
-    } catch (e) {
-        if (!options.ignoreError) throw e;
-        return null;
-    }
-}
-
-// 檢查指令是否存在
-function commandExists(cmd) {
-    try {
-        if (isWindows) {
-            execSync(`where ${cmd}`, { stdio: 'pipe' });
-        } else {
-            execSync(`which ${cmd}`, { stdio: 'pipe' });
-        }
-        return true;
+        pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        if (pkg.name !== 'mykiro-hero') throw new Error('wrong project');
     } catch {
-        return false;
+        log('✗ Not a MyKiroHero project', 'red');
+        process.exit(1);
+    }
+
+    const oldVersion = pkg.version;
+
+    console.log('');
+    log('╔══════════════════════════════════════════════════════════════╗', 'cyan');
+    log('║                                                              ║', 'cyan');
+    log(`║   🔄 MyKiroHero Upgrade                                      ║`, 'cyan');
+    log(`║   Current version: ${oldVersion.padEnd(43)}║`, 'cyan');
+    log('║                                                              ║', 'cyan');
+    log('╚══════════════════════════════════════════════════════════════╝', 'cyan');
+    console.log('');
+
+    const totalSteps = 7;
+
+    try {
+        // Step 1: Backup memories
+        logStep(1, totalSteps, 'Backing up memories...');
+        try {
+            require('dotenv').config({ path: path.join(projectDir, '.env') });
+            if (process.env.MEMORY_REPO && process.env.GITHUB_TOKEN) {
+                const { backup } = require('./src/memory-backup');
+                const result = await backup();
+                if (result.success) {
+                    log(`  ✓ Backup complete (${result.reason})`, 'green');
+                } else {
+                    log(`  ⚠ Backup skipped: ${result.reason}`, 'yellow');
+                }
+            } else {
+                log('  ⚠ MEMORY_REPO not configured, skipping backup', 'yellow');
+            }
+        } catch (e) {
+            log(`  ⚠ Backup failed (non-fatal): ${e.message}`, 'yellow');
+        }
+        console.log('');
+
+        // Step 2: git pull
+        logStep(2, totalSteps, 'Pulling latest code...');
+        let codeChanged = true;
+        try {
+            const pullResult = exec(`${gitCmd} pull origin main`, { silent: true, cwd: projectDir });
+            if (pullResult && pullResult.includes('Already up to date')) {
+                log('  Already up to date', 'yellow');
+                codeChanged = false;
+            } else {
+                log('  ✓ Code updated', 'green');
+            }
+        } catch (e) {
+            log(`  ✗ git pull failed: ${e.message}`, 'red');
+            log('  Please resolve git issues manually and retry', 'yellow');
+            process.exit(1);
+        }
+        console.log('');
+
+        // Step 3: npm install (skip if no code changes)
+        logStep(3, totalSteps, 'Updating dependencies...');
+        if (codeChanged) {
+            exec('npm install --silent', { cwd: projectDir, silent: true });
+            try {
+                exec(`node -e "require('better-sqlite3')"`, { cwd: projectDir, silent: true });
+                log('  ✓ Dependencies updated (SQLite OK)', 'green');
+            } catch {
+                log('  ✓ Dependencies updated (SQLite fallback mode)', 'yellow');
+            }
+        } else {
+            log('  ✓ Skipped (no code changes)', 'green');
+        }
+        console.log('');
+
+        // Step 4: .env backfill
+        logStep(4, totalSteps, 'Checking .env for new variables...');
+        const envPath = path.join(projectDir, '.env');
+        const examplePath = path.join(projectDir, '.env.example');
+
+        if (fs.existsSync(envPath) && fs.existsSync(examplePath)) {
+            const currentEnv = fs.readFileSync(envPath, 'utf-8');
+            const exampleEnv = fs.readFileSync(examplePath, 'utf-8');
+
+            const existingKeys = new Set();
+            for (const line of currentEnv.split('\n')) {
+                const match = line.match(/^([A-Z_][A-Z0-9_]*)=/);
+                if (match) existingKeys.add(match[1]);
+            }
+
+            const missingLines = [];
+            const exampleLines = exampleEnv.split('\n');
+            let pendingComment = '';
+
+            for (const line of exampleLines) {
+                if (line.startsWith('#') || line.trim() === '') {
+                    pendingComment += line + '\n';
+                    continue;
+                }
+                const match = line.match(/^([A-Z_][A-Z0-9_]*)=/);
+                if (match && !existingKeys.has(match[1])) {
+                    if (pendingComment.trim()) {
+                        missingLines.push('');
+                        missingLines.push(pendingComment.trimEnd());
+                    }
+                    missingLines.push(line);
+                }
+                pendingComment = '';
+            }
+
+            if (missingLines.length > 0) {
+                const appendContent = '\n# --- Added by upgrade ---\n' + missingLines.join('\n') + '\n';
+                fs.appendFileSync(envPath, appendContent);
+                const addedCount = missingLines.filter(l => l.match(/^[A-Z_]/)).length;
+                log(`  ✓ Added ${addedCount} new variable(s) to .env`, 'green');
+                for (const line of missingLines) {
+                    const m = line.match(/^([A-Z_][A-Z0-9_]*)=/);
+                    if (m) log(`    + ${m[1]}`, 'cyan');
+                }
+            } else {
+                log('  ✓ .env is up to date', 'green');
+            }
+        } else if (!fs.existsSync(envPath)) {
+            log('  ⚠ No .env found — run full install first: node install.js', 'yellow');
+        }
+        console.log('');
+
+        // Step 5: Check AI Provider updates (reuses ai-setup pattern)
+        logStep(5, totalSteps, 'Checking AI Provider updates...');
+        try {
+            const registryPath = path.join(projectDir, 'ai-providers.json');
+            if (fs.existsSync(registryPath)) {
+                const AiProviderManager = require('./src/ai-provider-manager');
+                const parentKiroDir = path.join(path.dirname(projectDir), '.kiro');
+                const aiManager = new AiProviderManager(projectDir, parentKiroDir);
+                const enabled = aiManager.getEnabledProviders();
+
+                const env = {};
+                const envPath2 = path.join(projectDir, '.env');
+                if (fs.existsSync(envPath2)) {
+                    for (const line of fs.readFileSync(envPath2, 'utf-8').split('\n')) {
+                        const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)/);
+                        if (m) env[m[1]] = m[2];
+                    }
+                }
+
+                const reg = aiManager.getRegistry();
+                let hasNews = false;
+
+                // Check deprecated models
+                for (const cap of ['IMAGE', 'TTS', 'STT']) {
+                    const val = env[`AI_MODEL_${cap}`] || '';
+                    if (!val.includes(':')) continue;
+                    const [pid, mid] = val.split(':');
+                    const provider = reg.providers.find(p => p.id === pid);
+                    if (!provider) continue;
+                    const model = provider.models.find(m => m.id === mid);
+                    if (model && model.status === 'deprecated') {
+                        log(`  ⚠ ${provider.name} model "${model.name}" is deprecated${model.deprecationDate ? ` (${model.deprecationDate})` : ''}`, 'yellow');
+                        const alt = provider.models.find(m => m.capability === model.capability && m.default);
+                        if (alt) log(`    Suggested: ${alt.name}`, 'cyan');
+                        hasNews = true;
+                    }
+                }
+
+                // Check for new providers not yet enabled
+                const newProviders = reg.providers.filter(p => !enabled.includes(p.id));
+                if (newProviders.length > 0 && enabled.length > 0) {
+                    log(`  Available providers not yet enabled:`, 'cyan');
+                    for (const p of newProviders) {
+                        const free = p.freeTier?.available ? ' ★FREE' : '';
+                        log(`    • ${p.name}${free} (${p.capabilities.join(', ')})`, 'white');
+                    }
+                    log(`    Use: node install.js --manage-ai`, 'yellow');
+                    hasNews = true;
+                }
+
+                if (!hasNews) {
+                    log('  ✓ AI Provider config up to date', 'green');
+                }
+            } else {
+                log('  No ai-providers.json found, skipping', 'yellow');
+            }
+        } catch (e) {
+            log(`  ⚠ AI Provider check failed: ${e.message}`, 'yellow');
+        }
+        console.log('');
+
+        // Step 6: Restart services
+        logStep(6, totalSteps, 'Restarting services...');
+        if (commandExists('pm2')) {
+            exec('pm2 restart gateway', { silent: true, ignoreError: true });
+            exec('pm2 restart recall-worker', { silent: true, ignoreError: true });
+            log('  ✓ PM2 services restarted', 'green');
+        } else {
+            log('  ⚠ PM2 not found — please restart Gateway manually', 'yellow');
+        }
+        console.log('');
+
+        // Step 7: Show changelog
+        logStep(7, totalSteps, 'Recent changes:');
+        const newPkg = JSON.parse(fs.readFileSync(path.join(projectDir, 'package.json'), 'utf-8'));
+        const newVersion = newPkg.version;
+
+        if (newVersion !== oldVersion) {
+            log(`  Version: ${oldVersion} → ${newVersion}`, 'green');
+        } else {
+            log(`  Version: ${newVersion} (unchanged)`, 'yellow');
+        }
+
+        try {
+            const changelog = exec(`${gitCmd} log --oneline -10`, { silent: true, cwd: projectDir });
+            if (changelog) {
+                console.log('');
+                log('  Recent commits:', 'cyan');
+                for (const line of changelog.trim().split('\n')) {
+                    log(`    ${line}`, 'white');
+                }
+            }
+        } catch { /* ignore */ }
+
+        console.log('');
+        log('╔══════════════════════════════════════════════════════════════╗', 'green');
+        log('║  ✓ Upgrade complete!                                        ║', 'green');
+        log('╚══════════════════════════════════════════════════════════════╝', 'green');
+        console.log('');
+
+    } catch (error) {
+        log(`Upgrade failed: ${error.message}`, 'red');
+        process.exit(1);
     }
 }
 
-// 取得 Kiro CLI 路徑
-function getKiroCli() {
-    // 嘗試各種可能的路徑
-    const possiblePaths = isWindows ? [
-        path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Kiro', 'resources', 'app', 'bin', 'kiro.cmd'),
-        path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Kiro', 'bin', 'kiro.cmd'),
-        'kiro'
-    ] : [
-        '/Applications/Kiro.app/Contents/Resources/app/bin/kiro',
-        path.join(process.env.HOME || '', '.local', 'bin', 'kiro'),
-        'kiro'
-    ];
+// ─── manageAi() — quick setup (paste key → auto-detect) + optional advanced ───
 
-    for (const p of possiblePaths) {
-        if (commandExists(p) || (p !== 'kiro' && fs.existsSync(p))) {
-            return p;
+async function manageAi() {
+    const projectDir = process.cwd();
+    const pkgPath = path.join(projectDir, 'package.json');
+
+    if (!fs.existsSync(pkgPath)) {
+        log('✗ Not inside MyKiroHero project directory', 'red');
+        process.exit(1);
+    }
+
+    const parentKiroDir = path.join(path.dirname(projectDir), '.kiro');
+    const AiProviderManager = require('./src/ai-provider-manager');
+    const manager = new AiProviderManager(projectDir, parentKiroDir);
+
+    const rl = createPrompt();
+
+    // Detect language
+    const envPath = path.join(projectDir, '.env');
+    let lang = 'en';
+    if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        const match = envContent.match(/^LANGUAGE=(\w+)/m);
+        if (match) lang = match[1];
+    }
+
+    const reg = manager.getRegistry();
+
+    console.log('');
+    log('╔══════════════════════════════════════════════════════════════╗', 'cyan');
+    log('║   🤖 AI Provider Manager                                     ║', 'cyan');
+    log('╚══════════════════════════════════════════════════════════════╝', 'cyan');
+
+    // Show current status
+    const enabledBefore = manager.getEnabledProviders();
+    console.log('');
+    log(lang === 'zh' ? '目前設定：' : 'Current config:', 'cyan');
+    for (const provider of reg.providers) {
+        if (enabledBefore.includes(provider.id)) {
+            const config = manager.getProviderConfig(provider.id);
+            const hasKey = config.apiKey ? '✓key' : '✗key';
+            log(`  ✓ ${provider.name} [${hasKey}]`, 'green');
+        } else {
+            log(`  ✗ ${provider.name}`, 'white');
         }
     }
-    return null;
+
+    // Quick setup: paste key → auto-detect → enable
+    const { quickSetupAi } = require('./install/steps/ai-setup');
+    const issues = [];
+    await quickSetupAi(rl, lang, manager, issues);
+
+    // Sync MCP config
+    const enabledAfter = manager.getEnabledProviders();
+    if (enabledAfter.length > 0) {
+        await manager.syncMcpConfig();
+        log(lang === 'zh' ? '  ✓ MCP 設定已同步' : '  ✓ MCP config synced', 'green');
+    }
+
+    // Optional advanced management
+    console.log('');
+    log(lang === 'zh' ? '進階管理？' : 'Advanced management?', 'white');
+    log(`  [1] ${lang === 'zh' ? '移除 Provider' : 'Remove Provider'}`, 'white');
+    log(`  [2] ${lang === 'zh' ? '切換 Model' : 'Switch Model'}`, 'white');
+    log(`  [3] ${lang === 'zh' ? '更新 API Key' : 'Update API Key'}`, 'white');
+    log(`  [4] ${lang === 'zh' ? '管理 STT 設定' : 'Manage STT Settings'}`, 'white');
+    log(`  [0] ${lang === 'zh' ? '離開' : 'Exit'} (${lang === 'zh' ? '預設' : 'default'})`, 'white');
+
+    const choice = await ask(rl, '\n> ', '0');
+
+    if (choice === '1') {
+        const enabled = manager.getEnabledProviders();
+        if (enabled.length === 0) {
+            log(lang === 'zh' ? '  沒有已啟用的 provider' : '  No enabled providers', 'yellow');
+        } else {
+            for (let i = 0; i < enabled.length; i++) {
+                const p = reg.providers.find(pr => pr.id === enabled[i]);
+                log(`  [${i + 1}] ${p?.name || enabled[i]}`, 'white');
+            }
+            const rChoice = await ask(rl, `  ${lang === 'zh' ? '選擇要移除的' : 'Select to remove'}: `, '');
+            const rIdx = parseInt(rChoice, 10);
+            if (rIdx >= 1 && rIdx <= enabled.length) {
+                await manager.disableProvider(enabled[rIdx - 1]);
+                await manager.syncMcpConfig();
+                log(`  ✓ ${lang === 'zh' ? '已移除' : 'Removed'}`, 'green');
+            }
+        }
+
+    } else if (choice === '2') {
+        const enabled = manager.getEnabledProviders();
+        if (enabled.length === 0) {
+            log(lang === 'zh' ? '  沒有已啟用的 provider' : '  No enabled providers', 'yellow');
+        } else {
+            for (let i = 0; i < enabled.length; i++) {
+                const p = reg.providers.find(pr => pr.id === enabled[i]);
+                log(`  [${i + 1}] ${p?.name || enabled[i]}`, 'white');
+            }
+            const sChoice = await ask(rl, `  ${lang === 'zh' ? '選擇 provider' : 'Select provider'}: `, '');
+            const sIdx = parseInt(sChoice, 10);
+            if (sIdx >= 1 && sIdx <= enabled.length) {
+                const provider = reg.providers.find(pr => pr.id === enabled[sIdx - 1]);
+                if (provider) {
+                    for (const cap of provider.capabilities) {
+                        const models = provider.models.filter(m => m.capability === cap && m.status !== 'deprecated');
+                        log(`\n  ${cap.toUpperCase()}:`, 'cyan');
+                        for (let j = 0; j < models.length; j++) {
+                            log(`    [${j + 1}] ${models[j].name}`, 'white');
+                        }
+                        const mChoice = await ask(rl, `    ${lang === 'zh' ? '選擇' : 'Select'} (Enter skip): `, '');
+                        const mIdx = parseInt(mChoice, 10);
+                        if (mIdx >= 1 && mIdx <= models.length) {
+                            manager.updateModel(provider.id, cap, models[mIdx - 1].id);
+                            log(`    ✓ ${models[mIdx - 1].name}`, 'green');
+                        }
+                    }
+                }
+            }
+        }
+
+    } else if (choice === '3') {
+        const enabled = manager.getEnabledProviders();
+        if (enabled.length === 0) {
+            log(lang === 'zh' ? '  沒有已啟用的 provider' : '  No enabled providers', 'yellow');
+        } else {
+            for (let i = 0; i < enabled.length; i++) {
+                const p = reg.providers.find(pr => pr.id === enabled[i]);
+                log(`  [${i + 1}] ${p?.name || enabled[i]}`, 'white');
+            }
+            const kChoice = await ask(rl, `  ${lang === 'zh' ? '選擇 provider' : 'Select provider'}: `, '');
+            const kIdx = parseInt(kChoice, 10);
+            if (kIdx >= 1 && kIdx <= enabled.length) {
+                const provider = reg.providers.find(pr => pr.id === enabled[kIdx - 1]);
+                if (provider) {
+                    const newKey = await ask(rl, `  ${lang === 'zh' ? '新 API Key' : 'New API Key'}: `, '');
+                    if (newKey) {
+                        manager.updateApiKey(provider.id, newKey);
+                        log(`  ✓ ${lang === 'zh' ? 'Key 已更新' : 'Key updated'}`, 'green');
+                    }
+                }
+            }
+        }
+
+    } else if (choice === '4') {
+        const enabled = manager.getEnabledProviders();
+        let currentStt = '';
+        if (fs.existsSync(envPath)) {
+            const envContent = fs.readFileSync(envPath, 'utf-8');
+            const match = envContent.match(/^STT_PROVIDER=(.*)$/m);
+            if (match) currentStt = match[1].trim();
+        }
+
+        log(`  ${lang === 'zh' ? '目前 STT' : 'Current STT'}: ${currentStt || (lang === 'zh' ? '未啟用' : 'disabled')}`, 'cyan');
+
+        const sttProviders = enabled
+            .map(id => reg.providers.find(p => p.id === id))
+            .filter(p => p && p.capabilities.includes('stt'));
+
+        if (sttProviders.length === 0) {
+            log(lang === 'zh'
+                ? '  沒有支援 STT 的已啟用 provider'
+                : '  No enabled providers with STT support', 'yellow');
+        } else {
+            for (let i = 0; i < sttProviders.length; i++) {
+                const active = sttProviders[i].id === currentStt ? ' ← current' : '';
+                log(`  [${i + 1}] ${sttProviders[i].name}${active}`, 'white');
+            }
+            log(`  [0] ${lang === 'zh' ? '停用 STT' : 'Disable STT'}`, 'white');
+
+            const sttChoice = await ask(rl, `  ${lang === 'zh' ? '選擇' : 'Select'}: `, '');
+            const sttIdx = parseInt(sttChoice, 10);
+
+            if (sttIdx === 0) {
+                manager._writeEnv({ STT_PROVIDER: '' });
+                log(`  ✓ STT ${lang === 'zh' ? '已停用' : 'disabled'}`, 'green');
+            } else if (sttIdx >= 1 && sttIdx <= sttProviders.length) {
+                const selected = sttProviders[sttIdx - 1];
+                manager._writeEnv({ STT_PROVIDER: selected.id });
+                log(`  ✓ STT → ${selected.name}`, 'green');
+            }
+        }
+    }
+
+    console.log('');
+    log(lang === 'zh'
+        ? '提示：重啟 Kiro 讓 MCP server 設定生效'
+        : 'Note: Restart Kiro for MCP server changes to take effect', 'yellow');
+    rl.close();
 }
 
-// 多語系文字
-const i18n = {
-    zh: {
-        title: '🤖 MyKiroHero 安裝程式',
-        subtitle: '讓 Kiro AI 成為你的 WhatsApp 助手',
-        platform: '偵測到平台',
-        step1: '設定安裝路徑...',
-        defaultPath: '預設安裝路徑',
-        pathPrompt: '按 Enter 使用預設路徑，或輸入自訂路徑: ',
-        step2: '檢查必要工具...',
-        gitNotFound: 'Git 未安裝',
-        gitInstall: '請先安裝 Git: https://git-scm.com/',
-        kiroFound: 'Kiro CLI 找到',
-        kiroNotFound: 'Kiro CLI 未找到（extension 需要手動安裝）',
-        step3: '下載 MyKiroHero...',
-        dirExists: '目錄已存在，更新中...',
-        downloadDone: '下載完成',
-        step4: '安裝 Node.js 依賴...',
-        depsDone: '依賴安裝完成',
-        step5: '安裝 vscode-rest-control extension...',
-        downloadExt: '下載 extension...',
-        extDone: 'Extension 安裝完成',
-        extFailed: 'Extension 安裝失敗，請手動安裝',
-        extSkip: '跳過（找不到 Kiro CLI）',
-        extManual: '請手動安裝: kiro --install-extension vscode-rest-control-0.0.18.vsix',
-        step6: '設定 AI 人格檔案...',
-        langPrompt: '選擇語言 / Choose language:\n  1. 繁體中文\n  2. English\n請輸入 (1/2): ',
-        hasConfig: '已有設定檔，跳過',
-        copiedFiles: '複製了 {count} 個檔案',
-        step7: '寫入環境設定...',
-        envDone: '已寫入 .env',
-        done: '安裝完成！',
-        installPath: '安裝路徑',
-        nextSteps: '下一步:',
-        next1: '用手機掃描 QR Code 登入 WhatsApp',
-        next2: '開始和你的 AI 助手對話！',
-        openKiro: '正在開啟 Kiro...',
-        openKiroNote: '（Gateway 會自動啟動，請等待 QR Code 出現）',
-        openKiroFailed: '無法自動開啟 Kiro，請手動開啟',
-        openKiroManual: '手動開啟: kiro',
-        installFailed: '安裝失敗',
-    },
-    en: {
-        title: '🤖 MyKiroHero Installer',
-        subtitle: 'Turn Kiro AI into your WhatsApp assistant',
-        platform: 'Detected platform',
-        step1: 'Setting install path...',
-        defaultPath: 'Default install path',
-        pathPrompt: 'Press Enter for default, or enter custom path: ',
-        step2: 'Checking required tools...',
-        gitNotFound: 'Git not installed',
-        gitInstall: 'Please install Git first: https://git-scm.com/',
-        kiroFound: 'Kiro CLI found',
-        kiroNotFound: 'Kiro CLI not found (extension needs manual install)',
-        step3: 'Downloading MyKiroHero...',
-        dirExists: 'Directory exists, updating...',
-        downloadDone: 'Download complete',
-        step4: 'Installing Node.js dependencies...',
-        depsDone: 'Dependencies installed',
-        step5: 'Installing vscode-rest-control extension...',
-        downloadExt: 'Downloading extension...',
-        extDone: 'Extension installed',
-        extFailed: 'Extension install failed, please install manually',
-        extSkip: 'Skipped (Kiro CLI not found)',
-        extManual: 'Manual install: kiro --install-extension vscode-rest-control-0.0.18.vsix',
-        step6: 'Setting up AI personality files...',
-        langPrompt: 'Choose language / 選擇語言:\n  1. 繁體中文\n  2. English\nEnter (1/2): ',
-        hasConfig: 'Config exists, skipping',
-        copiedFiles: 'Copied {count} files',
-        step7: 'Writing environment config...',
-        envDone: 'Wrote .env',
-        done: 'Installation complete!',
-        installPath: 'Install path',
-        nextSteps: 'Next steps:',
-        next1: 'Scan QR Code with phone to login WhatsApp',
-        next2: 'Start chatting with your AI assistant!',
-        openKiro: 'Opening Kiro...',
-        openKiroNote: '(Gateway will auto-start, wait for QR Code)',
-        openKiroFailed: 'Could not auto-open Kiro, please open manually',
-        openKiroManual: 'Manual open: kiro',
-        installFailed: 'Installation failed',
-    }
-};
+// ─── restoreMemory() ───
 
-// 主安裝流程
+async function restoreMemory() {
+    const projectDir = process.cwd();
+    const pkgPath = path.join(projectDir, 'package.json');
+
+    if (!fs.existsSync(pkgPath)) {
+        log('✗ Not inside MyKiroHero project directory', 'red');
+        process.exit(1);
+    }
+
+    console.log('');
+    log('╔══════════════════════════════════════════════════════════════╗', 'cyan');
+    log('║  🔄 MyKiroHero Memory Restore                               ║', 'cyan');
+    log('╚══════════════════════════════════════════════════════════════╝', 'cyan');
+    console.log('');
+
+    require('dotenv').config({ path: path.join(projectDir, '.env') });
+
+    if (!process.env.MEMORY_REPO || !process.env.GITHUB_TOKEN) {
+        log('MEMORY_REPO and GITHUB_TOKEN must be set in .env', 'red');
+        process.exit(1);
+    }
+
+    try {
+        const { restore } = require('./src/memory-restore');
+        const result = await restore(process.env.MEMORY_REPO, process.env.GITHUB_TOKEN, projectDir);
+        if (result.success) {
+            log('✓ Memory restored successfully!', 'green');
+        } else {
+            log(`✗ Restore failed: ${result.reason}`, 'red');
+            process.exit(1);
+        }
+    } catch (e) {
+        log(`✗ Restore failed: ${e.message}`, 'red');
+        process.exit(1);
+    }
+}
+
+// ─── main() — orchestrator ───
+
 async function main() {
+    if (isUpgradeMode) return upgrade();
+    if (isManageAiMode) return manageAi();
+    if (isRestoreMode) return restoreMemory();
+
     console.log('');
     log('╔══════════════════════════════════════════════════════════════╗', 'cyan');
     log('║                                                              ║', 'cyan');
@@ -219,370 +554,30 @@ async function main() {
     console.log('');
 
     const rl = createPrompt();
-    
-    // 選擇語言（測試模式預設繁中）
-    let langChoice;
-    if (isTestMode) {
-        log(`  [TEST] Auto selecting: 繁體中文`, 'yellow');
-        langChoice = '1';
-    } else {
-        langChoice = await ask(rl, 'Choose language / 選擇語言:\n  1. 繁體中文\n  2. English\nEnter / 請輸入 (1/2): ', '1');
-    }
-    const lang = langChoice === '2' ? 'en' : 'zh';
-    const t = i18n[lang];
-    console.log('');
-    
-    const totalSteps = 7;
+
+    // Shared context object passed to all steps
+    const ctx = {
+        rl,
+        totalSteps: 5,
+        issues: [],
+        completed: [],
+        // Populated by steps:
+        lang: null, t: null,
+        gitCmd: 'git', gitAvailable: false,
+        kiroCli: null, pm2Installed: false,
+        installPath: null, isInsideProject: false,
+        steeringPath: null, parentKiroPath: null,
+    };
 
     try {
-        // Step 1: 設定安裝路徑
-        logStep(1, totalSteps, t.step1);
-        
-        // 測試模式使用臨時目錄
-        const testPath = isWindows 
-            ? path.join(process.env.TEMP || 'C:\\Temp', 'mykiro-test-' + Date.now())
-            : path.join('/tmp', 'mykiro-test-' + Date.now());
-        
-        const defaultPath = isTestMode ? testPath : (isWindows 
-            ? path.join(process.env.LOCALAPPDATA || '', 'MyKiroHero')
-            : path.join(process.env.HOME || '', '.mykiro-hero'));
-        
-        log(`${t.defaultPath}: ${defaultPath}`, 'yellow');
-        let installPath;
-        if (isTestMode) {
-            log(`  [TEST] Using test path: ${defaultPath}`, 'yellow');
-            installPath = defaultPath;
-        } else {
-            const customPath = await ask(rl, t.pathPrompt, '');
-            installPath = customPath || defaultPath;
-        }
-        console.log('');
-
-        // Step 2: 檢查必要工具
-        logStep(2, totalSteps, t.step2);
-        
-        // 檢查 Node.js（既然能執行這個腳本，一定有）
-        const nodeVersion = process.version;
-        log(`  ✓ Node.js ${nodeVersion}`, 'green');
-
-        // 檢查 Git
-        if (commandExists('git')) {
-            const gitVersion = exec('git --version', { silent: true }).trim();
-            log(`  ✓ ${gitVersion}`, 'green');
-        } else {
-            log(`  ✗ ${t.gitNotFound}`, 'red');
-            log(`  ${t.gitInstall}`, 'yellow');
-            process.exit(1);
-        }
-
-        // 檢查 Kiro
-        const kiroCli = getKiroCli();
-        if (kiroCli) {
-            log(`  ✓ ${t.kiroFound}`, 'green');
-        } else {
-            log(`  ! ${t.kiroNotFound}`, 'yellow');
-        }
-        console.log('');
-
-        // Step 3: 下載專案
-        logStep(3, totalSteps, t.step3);
-        
-        if (fs.existsSync(installPath)) {
-            log(`  ${t.dirExists}`, 'yellow');
-            exec('git pull origin main', { cwd: installPath, ignoreError: true });
-        } else {
-            exec(`git clone https://github.com/NorlWu-TW/MyKiroHero.git "${installPath}"`);
-        }
-        log(`  ✓ ${t.downloadDone}`, 'green');
-        console.log('');
-
-        // Step 4: 安裝依賴
-        logStep(4, totalSteps, t.step4);
-        exec('npm install', { cwd: installPath });
-        log(`  ✓ ${t.depsDone}`, 'green');
-        console.log('');
-
-        // Step 5: 安裝 Extension（測試模式跳過下載）
-        logStep(5, totalSteps, t.step5);
-        
-        if (isTestMode) {
-            log(`  [TEST] Skipping extension download`, 'yellow');
-        } else if (kiroCli) {
-            const vsixUrl = 'https://github.com/dpar39/vscode-rest-control/releases/download/v0.0.18/vscode-rest-control-0.0.18.vsix';
-            const vsixPath = path.join(installPath, 'vscode-rest-control-0.0.18.vsix');
-            
-            // 下載 vsix（如果不存在）
-            if (!fs.existsSync(vsixPath)) {
-                log(`  ${t.downloadExt}`, 'yellow');
-                if (isWindows) {
-                    exec(`powershell -Command "Invoke-WebRequest -Uri '${vsixUrl}' -OutFile '${vsixPath}'"`, { silent: true });
-                } else {
-                    exec(`curl -L -o "${vsixPath}" "${vsixUrl}"`, { silent: true });
-                }
-            }
-            
-            // 安裝
-            try {
-                exec(`"${kiroCli}" --install-extension "${vsixPath}"`, { silent: true });
-                log(`  ✓ ${t.extDone}`, 'green');
-            } catch {
-                log(`  ! ${t.extFailed}`, 'yellow');
-            }
-        } else {
-            log(`  ! ${t.extSkip}`, 'yellow');
-            log(`  ${t.extManual}`, 'yellow');
-        }
-        console.log('');
-
-        // Step 6: 設定 Steering 檔案
-        logStep(6, totalSteps, t.step6);
-        
-        const steeringPath = path.join(installPath, '.kiro', 'steering');
-        // 根據語言選擇範本資料夾
-        const templateFolder = lang === 'en' ? 'steering-en' : 'steering-zh';
-        const templatePath = path.join(installPath, 'templates', templateFolder);
-        
-        // 建立目錄
-        fs.mkdirSync(steeringPath, { recursive: true });
-        fs.mkdirSync(path.join(steeringPath, 'memory'), { recursive: true });
-        
-        // 複製範本（只複製不存在的檔案）
-        const templateFiles = fs.readdirSync(templatePath);
-        let copiedCount = 0;
-        
-        for (const file of templateFiles) {
-            const srcFile = path.join(templatePath, file);
-            const destFile = path.join(steeringPath, file);
-            
-            if (fs.statSync(srcFile).isFile() && !fs.existsSync(destFile)) {
-                fs.copyFileSync(srcFile, destFile);
-                log(`    + ${file}`, 'green');
-                copiedCount++;
-            }
-        }
-        
-        if (copiedCount === 0) {
-            log(`  ${t.hasConfig}`, 'yellow');
-        } else {
-            log(`  ✓ ${t.copiedFiles.replace('{count}', copiedCount)}`, 'green');
-        }
-        console.log('');
-
-        // Step 7: 寫入環境設定
-        logStep(7, totalSteps, t.step7);
-        
-        const envPath = path.join(installPath, '.env');
-        const heartbeatPath = path.join(steeringPath, 'HEARTBEAT.md').replace(/\\/g, '/');
-        const steeringPathUnix = steeringPath.replace(/\\/g, '/');
-        
-        const envContent = `# MyKiroHero Environment Config
-# Generated: ${new Date().toISOString()}
-# Platform: ${platform}
-# Language: ${lang}
-
-# AI reply prefix
-AI_PREFIX=*[AI Assistant]* 🤖
-
-# Gateway port (auto = system assigns available port)
-GATEWAY_PORT=auto
-
-# Message settings
-MESSAGE_MAX_LENGTH=1500
-MESSAGE_SPLIT_DELAY=500
-
-# Error notification
-ERROR_NOTIFICATION=true
-
-# Heartbeat config path
-HEARTBEAT_PATH=${heartbeatPath}
-
-# Steering files path
-STEERING_PATH=${steeringPathUnix}
-
-# IDE settings
-IDE_TYPE=kiro
-IDE_REST_PORT=55139
-`;
-        
-        fs.writeFileSync(envPath, envContent);
-        log(`  ✓ ${t.envDone}`, 'green');
-        console.log('');
-
-        // 設定 MCP
-        const mcpSettingsPath = path.join(installPath, '.kiro', 'settings');
-        fs.mkdirSync(mcpSettingsPath, { recursive: true });
-        
-        const mcpContent = {
-            mcpServers: {
-                'mykiro-gateway': {
-                    command: 'node',
-                    args: ['src/mcp-server.js'],
-                    env: { GATEWAY_URL: 'http://localhost:3000' },
-                    disabled: false,
-                    autoApprove: ['send_whatsapp', 'send_whatsapp_media', 'get_gateway_status']
-                }
-            }
-        };
-        
-        fs.writeFileSync(
-            path.join(mcpSettingsPath, 'mcp.json'),
-            JSON.stringify(mcpContent, null, 2)
-        );
-
-        // 設定 tasks.json
-        const vscodePath = path.join(installPath, '.vscode');
-        fs.mkdirSync(vscodePath, { recursive: true });
-        
-        const tasksContent = {
-            version: '2.0.0',
-            tasks: [{
-                label: 'Start Gateway',
-                type: 'shell',
-                command: 'node',
-                args: ['src/gateway/index.js'],
-                isBackground: true,
-                problemMatcher: [],
-                runOptions: { runOn: 'folderOpen' },
-                presentation: { reveal: 'silent', panel: 'dedicated' }
-            }]
-        };
-        
-        fs.writeFileSync(
-            path.join(vscodePath, 'tasks.json'),
-            JSON.stringify(tasksContent, null, 2)
-        );
-
-        // 完成
-        console.log('');
-        log('╔══════════════════════════════════════════════════════════════╗', 'green');
-        log(`║  ✓ ${t.done}                                              ║`, 'green');
-        log('╚══════════════════════════════════════════════════════════════╝', 'green');
-        console.log('');
-        log(`${t.installPath}: ${installPath}`, 'cyan');
-        console.log('');
-
-        // 測試模式：驗證安裝結果
-        if (isTestMode) {
-            console.log('');
-            log('🧪 TEST VERIFICATION - 驗證安裝結果', 'cyan');
-            console.log('');
-            
-            let testPassed = true;
-            const requiredFiles = [
-                '.env',
-                '.kiro/steering/IDENTITY.md',
-                '.kiro/steering/SOUL.md',
-                '.kiro/steering/USER.md',
-                '.kiro/steering/MEMORY.md',
-                '.kiro/steering/AGENTS.md',
-                '.kiro/steering/HEARTBEAT.md',
-                '.kiro/steering/ONBOARDING.md',
-                '.kiro/settings/mcp.json',
-                '.vscode/tasks.json',
-                'src/gateway/index.js',
-                'src/gateway/server.js',
-                'src/mcp-server.js',
-                'package.json'
-            ];
-            
-            for (const file of requiredFiles) {
-                const filePath = path.join(installPath, file);
-                if (fs.existsSync(filePath)) {
-                    log(`  ✓ ${file}`, 'green');
-                } else {
-                    log(`  ✗ ${file} (MISSING)`, 'red');
-                    testPassed = false;
-                }
-            }
-            
-            // 驗證 .env 內容
-            console.log('');
-            log('  Checking .env content...', 'cyan');
-            const envContent = fs.readFileSync(path.join(installPath, '.env'), 'utf-8');
-            const envChecks = ['AI_PREFIX', 'GATEWAY_PORT', 'HEARTBEAT_PATH', 'STEERING_PATH'];
-            for (const key of envChecks) {
-                if (envContent.includes(key)) {
-                    log(`    ✓ ${key} found`, 'green');
-                } else {
-                    log(`    ✗ ${key} missing`, 'red');
-                    testPassed = false;
-                }
-            }
-            
-            // 驗證 steering 檔案沒有個人資訊
-            console.log('');
-            log('  Checking for personal info leaks...', 'cyan');
-            const sensitivePatterns = [/886953870991/, /NorlWu(?!-TW)/, /叫小賀/];
-            const steeringFiles = fs.readdirSync(steeringPath).filter(f => f.endsWith('.md'));
-            
-            for (const file of steeringFiles) {
-                const content = fs.readFileSync(path.join(steeringPath, file), 'utf-8');
-                let hasLeak = false;
-                for (const pattern of sensitivePatterns) {
-                    if (pattern.test(content)) {
-                        log(`    ✗ ${file} contains sensitive info: ${pattern}`, 'red');
-                        hasLeak = true;
-                        testPassed = false;
-                    }
-                }
-                if (!hasLeak) {
-                    log(`    ✓ ${file} clean`, 'green');
-                }
-            }
-            
-            console.log('');
-            if (testPassed) {
-                log('╔══════════════════════════════════════════════════════════════╗', 'green');
-                log('║  🎉 ALL TESTS PASSED!                                        ║', 'green');
-                log('╚══════════════════════════════════════════════════════════════╝', 'green');
-            } else {
-                log('╔══════════════════════════════════════════════════════════════╗', 'red');
-                log('║  ❌ SOME TESTS FAILED!                                       ║', 'red');
-                log('╚══════════════════════════════════════════════════════════════╝', 'red');
-                process.exit(1);
-            }
-            
-            // 清理測試目錄
-            console.log('');
-            log('  Cleaning up test directory...', 'yellow');
-            fs.rmSync(installPath, { recursive: true, force: true });
-            log(`  ✓ Removed ${installPath}`, 'green');
-            
-            rl.close();
-            return;
-        }
-
-        log(t.nextSteps, 'yellow');
-        log(`  1. ${t.next1}`, 'white');
-        log(`  2. ${t.next2}`, 'white');
-        console.log('');
-
-        // 自動開啟 Kiro（如果有 Kiro CLI）
-        if (kiroCli) {
-            console.log('');
-            log(t.openKiro, 'cyan');
-            log(t.openKiroNote, 'yellow');
-            console.log('');
-            
-            rl.close();
-            
-            // 用 spawn 開啟 Kiro（不等待結束）
-            const kiroProcess = spawn(kiroCli, [installPath], {
-                detached: true,
-                stdio: 'ignore'
-            });
-            kiroProcess.unref();
-            
-            log(`  ✓ Kiro opened: ${installPath}`, 'green');
-        } else {
-            log(`  ! ${t.openKiroFailed}`, 'yellow');
-            log(`  ${t.openKiroManual} "${installPath}"`, 'yellow');
-            rl.close();
-        }
-
+        await envCheck.run(ctx);
+        await projectSetup.run(ctx);
+        await personalize.run(ctx);
+        await aiSetup.run(ctx);
+        await launch.run(ctx);
     } catch (error) {
-        log(`${t.installFailed}: ${error.message}`, 'red');
-        rl.close();
+        log(`${i18n[ctx.lang || 'en'].installFailed || 'Installation failed'}: ${error.message}`, 'red');
+        if (rl) rl.close();
         process.exit(1);
     }
 }

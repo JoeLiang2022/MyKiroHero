@@ -78,7 +78,8 @@ module.exports = async function kiroRestHandler(message, gateway) {
     console.log(`[KiroREST] 準備送到 Kiro: ${message.text}`);
 
     // 組合訊息 - 格式讓 Kiro 知道這是 WhatsApp 來的
-    const prompt = `[WhatsApp] ${message.sender}: ${message.text} (chatId: ${message.chatId})`;
+    // 包含 messageId 以支援引用回覆
+    const prompt = `[WhatsApp] ${message.sender}: ${message.text} (chatId: ${message.chatId}, msgId: ${message.messageId})`;
 
     try {
         await sendToKiroChat(prompt);

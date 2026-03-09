@@ -1,157 +1,158 @@
-# MyKiroHero 詳細設定指南
+# MyKiroHero Setup Guide
 
-## 系統架構
+> Last updated: 2026-02-17
+
+## Architecture
 
 ```
-WhatsApp 訊息 → Gateway (Node.js) → REST API → Kiro chat → AI 回覆 → API → WhatsApp
+WhatsApp ──→ Gateway (Express + PM2) ──→ IDE Handler ──→ Kiro / Cursor / Windsurf
+                │
+                ├── AI Router (image/tts/stt via external providers)
+                ├── Task Dispatch (Worker Kiro instances)
+                ├── Mission Control (plans, tasks, dashboard)
+                └── Memory Engine (session logs, journals, knowledge base)
 ```
 
-## 前置需求
+## Prerequisites
 
-### 1. vscode-rest-control extension
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| Node.js | >= 18 | Recommended: latest LTS |
+| Git | any | For cloning and updates |
+| Kiro IDE | latest | With `vscode-rest-control` extension |
+| PM2 | latest | `npm install -g pm2` (process manager) |
+| WhatsApp | mobile app | For QR code pairing |
 
-這是關鍵元件，讓外部程式可以透過 HTTP REST API 控制 Kiro。
+## Quick Install
 
-**安裝方式：**
-```powershell
-kiro --install-extension vscode-rest-control-0.0.18.vsix
-```
-
-**確認安裝成功：**
-- Kiro 左下角狀態列顯示 "RC Port: 55139"
-- 終端機有 `$env:REMOTE_CONTROL_PORT` 環境變數
-
-### 2. Node.js
-
-需要 Node.js 18 或更新版本。
-
-```powershell
-node --version  # 應該顯示 v18.x.x 或更高
-```
-
-### 3. WhatsApp 帳號
-
-首次執行會顯示 QR code，需要用手機 WhatsApp 掃描登入。
-
-## 安裝步驟
-
-### Step 1: 安裝依賴
-
-```powershell
+### Manual (recommended)
+```bash
+git clone https://github.com/NorlWu-TW/MyKiroHero.git
 cd MyKiroHero
-npm install
+node install.js
 ```
 
-### Step 2: 設定環境變數（可選）
+The installer walks through 5 steps: environment check, dependency install, personalization, AI provider setup, and launch.
 
-```powershell
-copy .env.example .env
+## Post-Install Verification
+
+### 1. Check PM2 processes
+```bash
+pm2 list
+```
+You should see `gateway` (online) and `recall-worker` (online).
+
+### 2. Check Gateway health
+```bash
+curl http://localhost:<port>/api/health
+```
+The port is stored in `.gateway-port` or set via `GATEWAY_PORT` in `.env`.
+
+### 3. Check WhatsApp connection
+Look for in PM2 logs:
+```
+[WhatsApp] Client ready
+```
+```bash
+pm2 logs gateway --lines 20
 ```
 
-編輯 `.env` 檔案：
-```
-KIRO_REST_PORT=55139
-TELEGRAM_BOT_TOKEN=your_token_here  # 可選
-```
+### 4. Check Kiro REST API
+Kiro status bar should show "RC Port: 55139" (or your configured `IDE_REST_PORT`).
 
-### Step 3: 啟動 Gateway
+## Configuration
 
-```powershell
-node src/gateway/index.js
+All config lives in `.env`. Copy from `.env.example` if not created by installer:
+```bash
+cp .env.example .env
 ```
 
-### Step 4: 掃描 QR code
+Key settings:
 
-首次執行會在終端機顯示 QR code，用手機 WhatsApp 掃描。
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LANGUAGE` | `en` | Interface language (zh/en) |
+| `AI_PREFIX` | `▸ *🤖 AI Assistant :*` | Bot reply prefix (name + emoji) |
+| `GATEWAY_PORT` | `auto` | Gateway port (auto = random available) |
+| `IDE_TYPE` | `kiro` | IDE type: kiro, cursor, windsurf, generic |
+| `IDE_REST_PORT` | `55139` | IDE REST API port (auto-detected by extension) |
+| `OWNER_CHAT_ID` | (empty) | Your WhatsApp chat ID (886...@c.us) |
+| `AI_PROVIDERS` | (empty) | Enabled AI providers (comma-separated) |
+| `STT_PROVIDER` | (empty) | Speech-to-text provider |
+| `MEMORY_REPO` | (empty) | GitHub repo URL for memory backup |
 
-### Step 5: 確認連線
+See `.env.example` for the complete list with descriptions.
 
-看到以下訊息表示成功：
-```
-[WhatsApp] 已連線，開始監聽訊息
-[Gateway] whatsapp client registered
-```
+## AI Provider Setup
 
-## REST API 技術細節
-
-### 送訊息到 Kiro chat
-
-```
-GET http://127.0.0.1:55139/?command=kiroAgent.sendMainUserInput&args=["訊息內容"]
-```
-
-### Gateway API
-
-**發送回覆：**
-```powershell
-$body = @{
-    platform = "whatsapp"
-    chatId = "886912345678@c.us"
-    message = "你的回覆"
-} | ConvertTo-Json
-
-$bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
-Invoke-RestMethod -Uri "http://localhost:3000/api/reply" -Method POST -ContentType "application/json; charset=utf-8" -Body $bytes
+Run the AI setup wizard:
+```bash
+node install.js --manage-ai
 ```
 
-**健康檢查：**
-```powershell
-Invoke-RestMethod -Uri "http://localhost:3000/api/health"
+Or manually edit `.env`:
+1. Set API key: `GEMINI_API_KEY=AIza...`
+2. Add to enabled list: `AI_PROVIDERS=gemini`
+3. Optionally select models: `AI_MODEL_IMAGE=gemini:gemini-3-pro-image-preview`
+
+Supported providers: Gemini (free tier), OpenAI, ElevenLabs (free tier), Stability AI, xAI Grok (free tier).
+
+Provider details are in `ai-providers.json`.
+
+## PM2 Management
+
+```bash
+# Start all services
+pm2 start ecosystem.config.js
+
+# Restart Gateway
+pm2 restart gateway
+
+# View logs
+pm2 logs gateway
+pm2 logs recall-worker
+
+# Stop all
+pm2 stop all
+
+# Auto-start on boot
+pm2 startup
+pm2 save
 ```
 
-## 訊息格式
+## Upgrade
 
-### 進來的訊息
-```
-[WhatsApp] 使用者名稱: 訊息內容 (chatId: 886912345678@c.us)
-```
-
-### 回覆格式
-回覆會自動加上前綴（依 .env 設定，例如 `*[AI Assistant]* 🤖`）
-
-## 故障排除
-
-### REST API 連不上
-
-1. 確認 Kiro 左下角有顯示 "RC Port: 55139"
-2. 確認 vscode-rest-control extension 已安裝
-3. 嘗試重新載入 Kiro 視窗（Ctrl+Shift+P → Reload Window）
-
-### WhatsApp 斷線
-
-1. 檢查 `.wwebjs_auth/` 資料夾是否存在
-2. 刪除 `.wwebjs_auth/` 重新掃描 QR code
-
-### 訊息沒送到 Kiro
-
-1. 檢查 Gateway log 是否有 `[KiroREST] ✓ 已送到 Kiro chat`
-2. 確認 port 55139 沒被其他程式佔用
-3. 檢查 `$env:REMOTE_CONTROL_PORT` 是否正確
-
-### 中文亂碼
-
-確保使用 UTF-8 編碼：
-```powershell
-$bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+```bash
+node install.js --upgrade
 ```
 
-## 打包注意事項
+This pulls latest code, updates dependencies, backfills new `.env` variables, checks for deprecated AI models, and restarts PM2 services.
 
-如果要打包成安裝檔，需要包含：
+## Troubleshooting
 
-1. **必要檔案：**
-   - `src/` 資料夾
-   - `package.json`
-   - `package-lock.json`
-   - `.env.example`
+### Gateway won't start
+- Check `pm2 logs gateway` for errors
+- Verify `.env` exists and has valid values
+- Check port conflicts: `GATEWAY_PORT=auto` avoids this
 
-2. **不要包含：**
-   - `node_modules/` - 安裝時會自動下載
-   - `.wwebjs_auth/` - 使用者自己的登入資訊
-   - `.wwebjs_cache/` - 快取檔案
+### WhatsApp disconnected
+- Delete `.wwebjs_auth/` and restart to re-pair: `pm2 restart gateway`
+- Check `pm2 logs gateway` for QR code output
 
-3. **額外需要：**
-   - `vscode-rest-control-0.0.18.vsix` - extension 安裝檔
+### Kiro REST API unreachable
+- Verify `vscode-rest-control` extension is installed in Kiro
+- Check Kiro status bar shows "RC Port: 55139"
+- Try: Ctrl+Shift+P → "Reload Window" in Kiro
+
+### AI features not working
+- Run `node install.js --manage-ai` to verify provider setup
+- Check API key validity in provider's dashboard
+- Check `pm2 logs gateway` for API error messages
+
+### Memory backup failing
+- Verify `MEMORY_REPO` and `GITHUB_TOKEN` in `.env`
+- Token needs repo write access
 
 ---
-最後更新：2026-02-04
+
+*For architecture details, see [INSTALLER-PLAN.md](INSTALLER-PLAN.md).*

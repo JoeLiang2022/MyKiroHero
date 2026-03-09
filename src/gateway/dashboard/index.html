@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Control - MyKiroHero</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤯</text></svg>">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle sidebar">☰</button>
+    <div class="logo">🤯 <span>Mission Control</span></div>
+    <div class="status-badge" id="gw-status">● Connecting...</div>
+  </div>
+  <div class="topbar-right">
+    <button class="activity-reopen-btn" id="activity-reopen-btn" onclick="expandActivityDrawer()" style="display:none" title="Open Activity Timeline">📊<span>Activity</span></button>
+    <div class="topbar-stat clickable" onclick="goToActivePlan()"><div class="num" id="stat-plans">-</div><div class="label">Active Plans ▾</div></div>
+    <div class="topbar-stat clickable" id="worker-stat-toggle" onclick="toggleWorkerPanel()"><div class="num" id="stat-workers">-</div><div class="label">Workers ▾</div></div>
+    <div class="topbar-stat clickable" id="task-stat-toggle" onclick="toggleTaskPanel()"><div class="num" id="stat-tasks">-</div><div class="label">Tasks Today ▾</div></div>
+  </div>
+</div>
+
+<!-- Worker Status Panel (collapsible) -->
+<div class="worker-panel" id="worker-panel">
+  <div class="worker-panel-inner" id="worker-panel-inner"></div>
+</div>
+
+
+
+<!-- Issue Summary Widget (collapsible) -->
+<div class="issue-panel" id="issue-panel">
+  <div class="issue-panel-header" id="issue-panel-header">
+    <span class="issue-panel-title">🐛 Issues</span>
+    <span class="issue-panel-counts" id="issue-panel-counts"></span>
+    <span class="issue-panel-toggle" id="issue-panel-toggle">▾</span>
+  </div>
+  <div class="issue-panel-body" id="issue-panel-body">
+    <div class="issue-panel-loading" id="issue-loading">Loading...</div>
+    <div class="issue-list" id="issue-list"></div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="project-switcher">
+        <select id="project-select" class="project-select">
+          <option value="">All Projects</option>
+        </select>
+        <button class="project-manage-btn" id="btn-manage-projects" title="Manage Projects">⚙</button>
+      </div>
+      <h3>MISSIONS</h3>
+      <div class="search-row">
+        <input type="text" id="sidebar-search" class="sidebar-search" placeholder="Search missions..." />
+        <select id="layer-filter" class="layer-filter">
+          <option value="">All Layers</option>
+          <option value="layer1">Layer 1</option>
+          <option value="layer2">Layer 2</option>
+          <option value="layer3">Layer 3</option>
+        </select>
+      </div>
+      <button class="new-mission-btn" id="btn-new-mission">＋ New Mission</button>
+    </div>
+    <div class="mission-list" id="mission-list"></div>
+  </div>
+
+  <!-- Sidebar backdrop (mobile) -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <!-- Content -->
+  <div class="content" id="content-area">
+    <!-- Empty state -->
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">🤯</div>
+      <div class="empty-title">Welcome to Mission Control</div>
+      <div class="empty-desc">輸入你的第一個需求，開始建立 plan</div>
+    </div>
+
+    <!-- Today Tasks View (hidden by default) -->
+    <div class="today-tasks-view" id="today-tasks-view" style="display:none">
+      <div class="today-tasks-header">
+        <div class="today-tasks-title">📋 Today's Tasks</div>
+        <button class="today-tasks-close" onclick="closeTodayTasks()">✕</button>
+      </div>
+      <div class="today-tasks-list" id="today-tasks-list">
+        <div style="padding:24px;color:#8b949e;text-align:center">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Plan detail (hidden by default) -->
+    <div class="plan-detail" id="plan-detail" style="display:none">
+      <div class="plan-header">
+        <div class="plan-title-row">
+          <div class="plan-title" id="plan-title"></div>
+          <span class="plan-badge" id="plan-badge"></span>
+        </div>
+        <div class="plan-meta-row">
+          <div class="plan-source" id="plan-source"></div>
+          <div class="plan-actions" id="plan-actions"></div>
+        </div>
+      </div>
+
+      <div class="strategy" id="strategy-section" style="display:none">
+        <div class="strategy-label">💡 AI 思路</div>
+        <div class="strategy-text" id="strategy-text"></div>
+      </div>
+
+      <div class="task-board" id="task-board">
+        <div class="task-board-title" id="task-board-title">TASKS</div>
+        <div id="task-list"></div>
+      </div>
+    </div>
+
+    <!-- Activity Drawer -->
+    <div class="activity-drawer collapsed" id="activity-drawer" role="region" aria-label="Activity Timeline" aria-expanded="false">
+      <div class="activity-drag-handle" id="activity-drag-handle" aria-hidden="true">
+        <div class="drag-handle-bar"></div>
+      </div>
+      <div class="activity-summary-bar" onclick="toggleActivityDrawer()">
+        <span class="activity-summary-text" id="activity-summary-text" aria-live="polite">📊 Activity: loading...</span>
+        <button class="activity-toggle-btn" aria-label="Toggle activity drawer">▲</button>
+      </div>
+      <div class="activity-drawer-content">
+        <div class="activity-drawer-header">
+          <span class="activity-drawer-title">📊 Activity Timeline</span>
+          <span class="activity-drawer-range" id="activity-drawer-range">7d</span>
+          <div class="activity-drawer-controls">
+            <button class="mc-tl-range-btn active" data-range="7d" onclick="setActivityRange('7d')" aria-label="Show last 7 days">7d</button>
+            <button class="mc-tl-range-btn" data-range="today" onclick="setActivityRange('today')" aria-label="Show today only">Today</button>
+            <button class="mc-tl-range-btn" data-range="30d" onclick="setActivityRange('30d')" aria-label="Show last 30 days">30d</button>
+            <button class="activity-collapse-btn" onclick="collapseActivityDrawer()" aria-label="Collapse drawer">▼</button>
+            <button class="activity-close-btn" onclick="hideActivityDrawer()" aria-label="Close drawer">✕</button>
+          </div>
+        </div>
+        <div class="activity-date-bar" id="activity-date-bar"></div>
+        <div class="activity-drawer-stats" id="activity-drawer-stats"></div>
+        <div class="activity-drawer-body" id="activity-drawer-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Old timeline view removed — activity list now renders inside #activity-drawer-body -->
+
+<!-- Input Bar -->
+<div class="input-bar">
+  <select id="template-select" class="template-select" style="display:none">
+    <option value="">一般任務</option>
+    <option value="spec-writing">📝 Spec Writing</option>
+    <option value="research">🔍 Research</option>
+    <option value="bug-fix">🐛 Bug Fix</option>
+    <option value="feature">✨ Feature</option>
+    <option value="refactor">♻️ Refactor</option>
+    <option value="code-review">👀 Code Review</option>
+  </select>
+  <input type="text" id="input-field" placeholder="輸入新的需求，或對目前計畫下指令..." />
+  <button class="send-btn" id="btn-send">Send</button>
+</div>
+
+<!-- Shortcut Help Overlay (hidden by default) -->
+<div class="shortcut-overlay" id="shortcut-overlay" style="display:none">
+  <div class="shortcut-modal">
+    <div class="shortcut-header">
+      <h3>⌨️ Keyboard Shortcuts</h3>
+      <button class="shortcut-close-btn" id="shortcut-close-btn">✕</button>
+    </div>
+    <table class="shortcut-table">
+      <tbody>
+        <tr><td class="shortcut-key"><kbd>/</kbd> or <kbd>Ctrl+K</kbd></td><td>Focus search</td></tr>
+        <tr><td class="shortcut-key"><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Navigate plan list</td></tr>
+        <tr><td class="shortcut-key"><kbd>Enter</kbd></td><td>Select highlighted plan</td></tr>
+        <tr><td class="shortcut-key"><kbd>E</kbd></td><td>Execute current plan</td></tr>
+        <tr><td class="shortcut-key"><kbd>N</kbd></td><td>New mission</td></tr>
+        <tr><td class="shortcut-key"><kbd>W</kbd></td><td>Toggle worker panel</td></tr>
+        <tr><td class="shortcut-key"><kbd>T</kbd></td><td>Toggle today's tasks</td></tr>
+        <tr><td class="shortcut-key"><kbd>?</kbd></td><td>Show/hide this help</td></tr>
+        <tr><td class="shortcut-key"><kbd>Esc</kbd></td><td>Close modal/overlay</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

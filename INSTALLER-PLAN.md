@@ -1,151 +1,236 @@
-# MyKiroHero 安裝檔規劃
+# MyKiroHero Installation Architecture
 
-## 目標
-讓使用者可以一鍵安裝 MyKiroHero，不需要手動設定。
+> Last updated: 2026-02-17
 
----
+## Overview
 
-## 安裝流程
+MyKiroHero uses a 5-step interactive CLI installer (`node install.js`) that handles environment checks, project setup, personalization, AI provider configuration, and service launch. All user configuration lives in `.env` (dotenv), and the runtime is managed by PM2 via `ecosystem.config.js`.
 
-### Step 1: 歡迎畫面
-- 顯示 MyKiroHero 介紹
-- 確認使用者同意條款
-
-### Step 2: 檢查依賴
-- [ ] Node.js 是否已安裝？
-  - 沒有 → 提示下載或內建安裝
-- [ ] Kiro 是否已安裝？
-  - 沒有 → 提示下載
-
-### Step 3: 選擇安裝位置
-- 預設：`%LOCALAPPDATA%\MyKiroHero`
-- 使用者可自訂
-
-### Step 4: 設定精靈
-- AI 名稱（預設：AI Assistant）
-- AI Emoji（預設：🤪）
-- Kiro workspace 路徑
-- 是否開機自動啟動？
-
-### Step 5: 安裝
-- 複製檔案到安裝目錄
-- 執行 `npm install`
-- 產生 config.js（根據使用者設定）
-- 建立 Startup 腳本（如果選擇自動啟動）
-
-### Step 6: 完成
-- 顯示 QR Code 掃描說明
-- 啟動 Gateway
+No packaging tools (pkg, Inno Setup, electron-builder) are used. The project is distributed as a Git repository and run directly with Node.js.
 
 ---
 
-## 檔案結構調整
+## Installation Methods
 
-### 目前結構
-```
-MyKiroHero/
-├── src/gateway/
-│   ├── config.js      ← 設定寫死
-│   ├── server.js
-│   ├── index.js
-│   └── handlers/
-├── package.json
-└── ...
+### One-liner (recommended)
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/NorlWu-TW/MyKiroHero/main/install.ps1 | iex
 ```
 
-### 建議結構
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/NorlWu-TW/MyKiroHero/main/install.sh | bash
+```
+
+These bootstrap scripts:
+1. Check that `node` and `git` exist
+2. `git clone` the repo (or `git pull` if already installed)
+3. Run `node install.js` to start the interactive installer
+
+### Manual
+
+```bash
+git clone https://github.com/NorlWu-TW/MyKiroHero.git
+cd MyKiroHero
+node install.js
+```
+
+---
+
+## 5-Step Install Flow (`install.js`)
+
+### Step 1: Language + Environment Check
+- Prompt user to choose language (zh / en)
+- Detect OS (Windows / macOS / Linux)
+- Check Node.js version (>= 18 required)
+- Check Git availability (with fallback to user-provided path)
+- Locate Kiro CLI (searches known install paths)
+
+### Step 2: Get Project + Install Dependencies
+- If not already cloned, `git clone` the repo
+- If already present, `git pull` to update
+- Run `npm install`
+- Install `vscode-rest-control` extension into Kiro (if Kiro CLI found)
+- Auto-install `uvx` (uv tool runner) for AI MCP servers that need it
+
+### Step 3: Personalization
+- Copy `.env.example` → `.env` (if `.env` doesn't exist)
+- Prompt for AI_PREFIX (display name + emoji for bot replies)
+- Prompt for LANGUAGE preference
+- Write values into `.env`
+
+### Step 4: AI Provider Setup
+- Show available providers from `ai-providers.json` registry
+- User pastes API key → installer auto-detects provider via regex patterns
+- Enable provider: writes API key to `.env`, sets `AI_PROVIDERS`, syncs MCP config
+- Supports multiple keys (loop until user is done)
+- Can be re-run later: `node install.js --manage-ai`
+
+### Step 5: Launch + Install Report
+- Start Gateway via PM2 (`pm2 start ecosystem.config.js`)
+- Display QR code instructions for WhatsApp pairing
+- Show install report: completed items, warnings, next steps
+
+---
+
+## Additional Modes
+
+| Flag | Purpose |
+|------|---------|
+| `--test` | Auto-answer all prompts with defaults (CI/testing) |
+| `--upgrade` | Pull latest code, npm install, backfill new .env vars, restart PM2 |
+| `--manage-ai` | Re-run AI provider setup (add/remove keys, change models) |
+| `--restore` | Restore memory from GitHub backup repo |
+
+---
+
+## Configuration
+
+### `.env` (primary config file)
+
+All runtime configuration is driven by environment variables loaded via `dotenv`. Key sections:
+
+| Section | Variables | Purpose |
+|---------|-----------|---------|
+| General | `LANGUAGE`, `AI_PREFIX`, `GATEWAY_PORT`, `MESSAGE_MAX_LENGTH` | Core behavior |
+| Fragment | `FRAGMENT_SCORE_THRESHOLD`, `FRAGMENT_COLLECT_TIMEOUT`, etc. | Message coalescing |
+| IDE | `IDE_TYPE`, `IDE_REST_PORT` | IDE integration (kiro/cursor/windsurf) |
+| Owner | `OWNER_CHAT_ID` | WhatsApp owner identification |
+| AI Providers | `AI_PROVIDERS`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, etc. | External AI services |
+| AI Models | `AI_MODEL_IMAGE`, `AI_MODEL_TTS`, `AI_MODEL_STT` | Model selection per capability |
+| STT | `STT_PROVIDER` | Speech-to-text provider choice |
+| Memory | `MEMORY_REPO`, `GITHUB_TOKEN` | Soul/memory backup to GitHub |
+| Tasks | `TASK_OUTPUT_DIR`, `WORKER_MODE` | Task dispatch system |
+
+See `.env.example` for the full list with comments.
+
+### `ai-providers.json` (AI provider registry)
+
+Declarative registry of supported AI providers. Used by:
+- `install.js` — auto-detect provider from pasted API key
+- `AiProviderManager` — enable/disable providers, sync MCP config, validate keys
+- `--upgrade` — check for deprecated models, suggest alternatives
+
+Each provider entry includes: key pattern (regex), capabilities, MCP server config, and available models with status.
+
+### `ecosystem.config.js` (PM2 process config)
+
+Defines two PM2 processes:
+
+| Process | Script | Purpose |
+|---------|--------|---------|
+| `gateway` | `src/gateway/index.js` | Main Gateway server (WhatsApp, REST API, handlers, task dispatch) |
+| `recall-worker` | `src/memory/engine.js` | Background memory indexing engine |
+
+Both run with `autorestart: true` and `NODE_ENV: production`.
+
+### `src/gateway/config.js` (runtime config loader)
+
+Reads `.env` via dotenv and exports a structured config object. Handles:
+- Port resolution (env → `.gateway-port` file → auto)
+- Path resolution (relative → absolute via `path.resolve`)
+- Type coercion (string env vars → numbers/booleans)
+
+---
+
+## Runtime Architecture
+
+```
+WhatsApp ──→ Gateway (Express) ──→ IDE Handler ──→ Kiro/Cursor/Windsurf
+                │
+                ├── DirectRouter (weather, URL handlers)
+                ├── TaskExecutor (task dispatch to Workers)
+                ├── Mission Control (SQLite DB, dashboard)
+                ├── STT Service (voice → text)
+                ├── AI Router (provider rotation, cooldown)
+                ├── Worker Registry (track Worker Kiro instances)
+                ├── Session Logger (conversation history)
+                └── Push Queue Manager (outbound message queue)
+```
+
+### Key Components
+
+- **AiProviderManager** (`src/ai-provider-manager.js`): Manages provider enable/disable, API key storage in `.env`, MCP config sync to `.kiro/settings/mcp.json`, model selection.
+- **AI Router** (`src/ai-router.js`): Routes AI capability requests (image/tts/stt) to enabled providers with cooldown, rate limiting, and fallback.
+- **Gateway Server** (`src/gateway/server.js`): Express HTTP server with WebSocket support for dashboard.
+- **Mission Control DB** (`src/gateway/mission-control-db.js`): SQLite database for plans, tasks, issues.
+- **Task Queue** (`src/gateway/task-queue-sqlite.js`): SQLite-backed task queue sharing the MC database.
+
+---
+
+## File Structure (actual)
+
 ```
 MyKiroHero/
-├── src/gateway/
-│   ├── server.js
-│   ├── index.js
-│   └── handlers/
-├── config/
-│   ├── config.default.js   ← 預設設定（範本）
-│   └── config.js           ← 使用者設定（安裝時產生）
+├── .env                        # User config (created by installer)
+├── .env.example                # Config template with all variables
+├── .gateway-port               # Last-used port (for stability across restarts)
+├── ai-providers.json           # AI provider registry
+├── ecosystem.config.js         # PM2 process definitions
+├── install.js                  # Interactive CLI installer (5-step)
+├── install.ps1                 # Windows one-liner bootstrap
+├── install.sh                  # macOS/Linux one-liner bootstrap
+├── package.json                # Dependencies and scripts
 ├── scripts/
-│   ├── install.js          ← 安裝腳本
-│   ├── setup.js            ← 設定精靈
-│   └── startup.js          ← 產生 Startup 腳本
-├── package.json
-└── ...
+│   ├── open-dashboard.js       # Open Mission Control dashboard
+│   ├── setup-worker.js         # Setup Worker Kiro instance
+│   └── sync-worker-steering.js # Sync steering files to workers
+├── skills/                     # Domain knowledge and skill definitions
+├── memory/                     # Local memory storage (journals, etc.)
+├── data/                       # SQLite databases (mission-control.db)
+├── temp/                       # Task output, downloads
+└── src/
+    ├── ai-provider-manager.js  # Provider lifecycle management
+    ├── ai-router.js            # AI capability routing
+    ├── ai-router-init.js       # Router factory
+    ├── alias-registry.js       # MCP tool alias resolution (old → new names)
+    ├── mcp-server.js           # MCP tool definitions (20 unified tools)
+    ├── memory-backup.js        # GitHub memory backup
+    ├── memory-restore.js       # GitHub memory restore
+    ├── utils/                  # Shared utilities (timezone, etc.)
+    ├── whatsapp/               # WhatsApp client management
+    ├── memory/                 # SQLite+FTS5 engine, indexer, journal, search
+    ├── skills/                 # Skill loader, search engine
+    └── gateway/
+        ├── config.js           # Runtime config (reads .env)
+        ├── index.js            # Entry point (starts everything)
+        ├── server.js           # Express + WebSocket server
+        ├── whatsapp-adapter.js # WhatsApp Web.js integration
+        ├── direct-router.js    # Direct command routing
+        ├── direct-routes.json  # Route definitions
+        ├── task-executor.js    # Task dispatch engine
+        ├── task-queue.js       # In-memory task queue
+        ├── task-queue-sqlite.js# SQLite task queue
+        ├── task-splitter.js    # Task splitting logic
+        ├── task-templates.js   # Task template engine
+        ├── mission-control-db.js # Mission Control database
+        ├── mission-control-routes.js # MC REST API
+        ├── worker-registry.js  # Worker Kiro tracking
+        ├── worker-spawner.js   # Auto-spawn Worker Kiro
+        ├── worker-stats.js     # Worker statistics
+        ├── push-queue-manager.js # Outbound message queue
+        ├── session-logger.js   # Conversation logging
+        ├── review-learner.js   # Code review learning
+        ├── usage-tracker.js    # AI usage tracking
+        ├── weather-handler.js  # Weather queries
+        ├── handlers/           # IDE-specific message handlers
+        ├── stt/                # Speech-to-text adapters
+        ├── tts/                # Text-to-speech adapters
+        ├── tasks/              # Task handlers (tts, image-gen, git-ops, worker-dispatch…)
+        ├── task-templates/     # Task template definitions
+        └── dashboard/          # Mission Control web UI
 ```
 
 ---
 
-## config.js 改進
+## Upgrade Flow (`node install.js --upgrade`)
 
-### 目前
-```javascript
-module.exports = {
-    aiPrefix: '*[AI Assistant]* 🤖',  // 寫死
-    kiroRestPort: 55139,
-    // ...
-};
-```
-
-### 建議
-```javascript
-const path = require('path');
-const fs = require('fs');
-
-// 預設設定
-const defaults = {
-    aiName: 'AI Assistant',
-    aiEmoji: '🤖',
-    kiroRestPort: process.env.KIRO_REST_PORT || 55139,
-    serverPort: process.env.GATEWAY_PORT || 3000,
-    message: {
-        maxLength: 1500,
-        splitDelay: 500
-    },
-    errorNotification: true
-};
-
-// 讀取使用者設定（如果存在）
-const userConfigPath = path.join(__dirname, 'config.user.json');
-let userConfig = {};
-if (fs.existsSync(userConfigPath)) {
-    userConfig = JSON.parse(fs.readFileSync(userConfigPath, 'utf8'));
-}
-
-// 合併設定
-const config = { ...defaults, ...userConfig };
-
-// 產生 aiPrefix
-config.aiPrefix = `*[${config.aiName}]* ${config.aiEmoji}`;
-
-module.exports = config;
-```
-
----
-
-## 打包方式選項
-
-### 選項 A: Inno Setup（推薦）
-- 優點：成熟、免費、Windows 原生體驗
-- 缺點：需要學習 Inno Setup 腳本
-
-### 選項 B: electron-builder
-- 優點：跨平台、可做 GUI 設定介面
-- 缺點：打包檔案較大
-
-### 選項 C: pkg + 自製安裝腳本
-- 優點：簡單、Node.js 打包成單一 .exe
-- 缺點：沒有漂亮的安裝介面
-
-### 建議
-先用 **選項 C**（pkg）做 MVP，之後再考慮 Inno Setup。
-
----
-
-## 下一步
-1. [ ] 重構 config.js 支援使用者設定
-2. [ ] 建立 setup.js 設定精靈（CLI）
-3. [ ] 建立 startup.js 產生 Startup 腳本
-4. [ ] 測試 pkg 打包
-5. [ ] 寫安裝說明文件
-
----
-
-*建立日期：2026-02-04*
+1. Backup memories to GitHub (if `MEMORY_REPO` configured)
+2. `git pull origin main`
+3. `npm install`
+4. Backfill new `.env` variables from `.env.example` (preserves existing values)
+5. Check AI provider updates (deprecated models, new providers)
+6. `pm2 restart gateway && pm2 restart recall-worker`
+7. Show changelog (recent git commits)

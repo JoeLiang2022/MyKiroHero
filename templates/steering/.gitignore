@@ -1,0 +1,14 @@
+# Memory folder (personal data)
+memory/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Secrets
+secrets/
+*.secret
+
+# System files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+{
+  "name": "feature",
+  "description": "New feature task template",
+  "requiredFields": ["description", "files"],
+  "optionalFields": ["acceptanceCriteria"],
+  "defaultTimeout": 900,
+  "defaultBranchPattern": "worker/feat-{{taskId}}",
+  "promptTemplate": "[TASK] {{taskId}}\naction: add-feature\nbranch: {{branch}}\nfiles: {{files}}\ndescription: {{description}}\n{{#acceptanceCriteria}}\nAcceptance criteria:\n{{acceptanceCriteria}}\n{{/acceptanceCriteria}}\n---\nImplement the feature described above.\nWork on the specified branch. When done, commit and push the branch (NOT main).\nThen use report_task_result with the branch name and commit hash."
+}

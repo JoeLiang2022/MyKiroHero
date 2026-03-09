@@ -1,0 +1,78 @@
+{
+  "version": "1.0.0",
+  "description": "同義詞表 - 用於知識庫搜尋擴展",
+  "groups": [
+    {
+      "id": "auth",
+      "terms": ["auth", "authentication", "login", "signin", "sign-in", "logout", "登入", "登出", "認證", "驗證", "oauth", "jwt", "token"]
+    },
+    {
+      "id": "error",
+      "terms": ["bug", "issue", "error", "problem", "fault", "exception", "問題", "錯誤", "異常", "debug", "fix", "修復"]
+    },
+    {
+      "id": "memory",
+      "terms": ["memory", "session", "history", "context", "記憶", "歷史", "對話", "conversation", "chat", "聊天記錄"]
+    },
+    {
+      "id": "config",
+      "terms": ["config", "configuration", "setting", "settings", "option", "options", "設定", "配置", "選項", "env", "environment", "環境變數"]
+    },
+    {
+      "id": "message",
+      "terms": ["msg", "message", "chat", "訊息", "消息", "聊天", "notification", "通知"]
+    },
+    {
+      "id": "api",
+      "terms": ["api", "endpoint", "interface", "rest", "graphql", "接口", "端點", "webhook", "callback"]
+    },
+    {
+      "id": "file",
+      "terms": ["file", "document", "doc", "檔案", "文件", "folder", "directory", "資料夾", "目錄", "path", "路徑"]
+    },
+    {
+      "id": "install",
+      "terms": ["install", "setup", "deploy", "安裝", "部署", "設置", "onboard", "初始化", "init", "initialize"]
+    },
+    {
+      "id": "whatsapp",
+      "terms": ["whatsapp", "wa", "wwebjs", "whatsapp-web.js"]
+    },
+    {
+      "id": "gateway",
+      "terms": ["gateway", "server", "backend", "伺服器", "後端", "service", "服務", "daemon", "process"]
+    },
+    {
+      "id": "agent",
+      "terms": ["agent", "ai", "assistant", "bot", "助手", "機器人", "llm", "model", "模型", "claude", "gpt", "kiro"]
+    },
+    {
+      "id": "tool",
+      "terms": ["tool", "skill", "function", "工具", "技能", "功能", "mcp", "plugin", "extension", "擴充"]
+    },
+    {
+      "id": "search",
+      "terms": ["search", "find", "query", "搜尋", "查詢", "找", "lookup", "filter", "篩選"]
+    },
+    {
+      "id": "data",
+      "terms": ["data", "database", "db", "資料", "數據", "storage", "store", "儲存", "sqlite", "json", "jsonl"]
+    },
+    {
+      "id": "network",
+      "terms": ["network", "http", "https", "request", "response", "網路", "請求", "回應", "fetch", "axios", "url"]
+    },
+    {
+      "id": "security",
+      "terms": ["security", "secure", "安全", "encrypt", "加密", "password", "密碼", "secret", "credential", "憑證"]
+    },
+    {
+      "id": "test",
+      "terms": ["test", "testing", "測試", "debug", "除錯", "log", "日誌", "trace", "追蹤"]
+    },
+    {
+      "id": "git",
+      "terms": ["git", "github", "repo", "repository", "commit", "push", "pull", "branch", "merge", "版本控制"]
+    }
+  ]
+}

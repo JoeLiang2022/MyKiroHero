@@ -1,0 +1,9 @@
+{
+  "name": "refactor",
+  "description": "Code refactoring task template",
+  "requiredFields": ["description", "files"],
+  "optionalFields": ["reason", "constraints"],
+  "defaultTimeout": 600,
+  "defaultBranchPattern": "worker/refactor-{{taskId}}",
+  "promptTemplate": "[TASK] {{taskId}}\naction: refactor\nbranch: {{branch}}\nfiles: {{files}}\ndescription: {{description}}\n{{#reason}}\nReason:\n{{reason}}\n{{/reason}}\n{{#constraints}}\nConstraints:\n{{constraints}}\n{{/constraints}}\n---\nRefactor the code as described. Ensure no behavior changes unless specified.\nRun tests before committing.\nWork on the specified branch. When done, commit and push the branch (NOT main).\nThen use report_task_result with the branch name and commit hash."
+}

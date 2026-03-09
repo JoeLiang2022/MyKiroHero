@@ -1,0 +1,7 @@
+# Memory System Module
+# This directory contains the memory system implementation:
+# - journal-manager.js - Journal file management
+# - memory-search.js - Memory search engine
+# - memory-md-manager.js - MEMORY.md management
+# - context-transfer.js - Context transfer handler
+# - summarizer.js - Daily summary generator

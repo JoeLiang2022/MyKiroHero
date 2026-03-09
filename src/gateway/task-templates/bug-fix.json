@@ -1,0 +1,9 @@
+{
+  "name": "bug-fix",
+  "description": "Bug fix task template",
+  "requiredFields": ["description", "files"],
+  "optionalFields": ["errorMessage", "expectedBehavior"],
+  "defaultTimeout": 600,
+  "defaultBranchPattern": "worker/fix-{{taskId}}",
+  "promptTemplate": "[TASK] {{taskId}}\naction: fix-bug\nbranch: {{branch}}\nfiles: {{files}}\ndescription: {{description}}\n{{#errorMessage}}\nError message:\n{{errorMessage}}\n{{/errorMessage}}\n{{#expectedBehavior}}\nExpected behavior:\n{{expectedBehavior}}\n{{/expectedBehavior}}\n---\nFix the bug described above. Run tests to verify the fix.\nWork on the specified branch. When done, commit and push the branch (NOT main).\nThen use report_task_result with the branch name and commit hash."
+}
