@@ -37,11 +37,21 @@ class WhatsAppAdapter {
             // 直接使用 msg.from 作為預設值，不調用可能出錯的 API
             let contactName = msg.from;
             let chatName = msg.from;
+            const isGroup = msg.from.endsWith('@g.us');
             
             // 嘗試從 msg._data 取得更多資訊（不需要額外 API 調用）
             try {
                 if (msg._data && msg._data.notifyName) {
                     contactName = msg._data.notifyName;
+                }
+                // 群組訊息嘗試取得群組名稱
+                if (isGroup) {
+                    try {
+                        const chat = await msg.getChat();
+                        chatName = chat.name || msg.from;
+                    } catch (e) {
+                        chatName = msg.from;
+                    }
                 }
             } catch (e) {
                 // 忽略
@@ -67,7 +77,7 @@ class WhatsAppAdapter {
                 this.gateway.receiveMessage('whatsapp', {
                     chatId: msg.from,
                     chatName: chatName,
-                    isGroup: false,
+                    isGroup: isGroup,
                     sender: contactName,
                     senderId: msg.author || msg.from,
                     text: msg.body,

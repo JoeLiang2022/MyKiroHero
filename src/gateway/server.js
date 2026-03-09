@@ -31,6 +31,9 @@ class MessageGateway extends EventEmitter {
     setupExpress() {
         this.app.use(express.json());
 
+        // 靜態檔案服務（public 資料夾）
+        this.app.use('/public', express.static(path.join(__dirname, '../../public')));
+
         // 發送回覆
         this.app.post('/api/reply', async (req, res) => {
             let { platform, chatId, message, replyToMessageId } = req.body;

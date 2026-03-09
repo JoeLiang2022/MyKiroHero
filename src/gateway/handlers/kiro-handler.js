@@ -97,10 +97,15 @@ class KiroHandler extends BaseHandler {
         const prefixStart = this.config.aiPrefix.split(' ')[0];
         if (message.text.startsWith(prefixStart)) return;
 
-        console.log(`[Kiro] 準備送到 Kiro: ${message.text}`);
+        console.log(`[Kiro] 準備送到 Kiro: ${message.text}${message.isGroup ? ' (群組)' : ''}`);
 
-        // 組合訊息
-        let prompt = `[WhatsApp] ${message.sender}: ${message.text} (chatId: ${message.chatId})`;
+        // 組合訊息 — 群組訊息加上群組名稱
+        let prompt;
+        if (message.isGroup) {
+            prompt = `[WhatsApp] [群組: ${message.chatName}] ${message.sender}: ${message.text} (chatId: ${message.chatId})`;
+        } else {
+            prompt = `[WhatsApp] ${message.sender}: ${message.text} (chatId: ${message.chatId})`;
+        }
         
         // 如果有媒體檔案，加入路徑資訊
         if (message.mediaPath) {

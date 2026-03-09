@@ -1,0 +1,111 @@
+const subject = '三月行事曆 & Jira 近一週更新摘要';
+const to = 'joe_liang2208116@jabil.com';
+const from = 'joe.kao2006@gmail.com';
+const JIRA = 'https://jabilcs.atlassian.net/browse';
+
+const body = [
+'Hi Joe 大神，',
+'',
+'以下是你要求的三月行事曆和 Jira 近一週更新摘要。',
+'',
+'═══════════════════════════════════════',
+'📅 三月行事曆 (2026/03)',
+'═══════════════════════════════════════',
+'',
+'1. Craw test',
+'   📆 3/9 (一) 10:00 - 11:00',
+'',
+'2. 游泳',
+'   📆 3/10 (二) 18:00 - 19:00',
+'',
+'3. 籃球',
+'   📆 3/12 (四) 17:30 - 18:30',
+'',
+'═══════════════════════════════════════',
+'📋 Jira 近一週更新 (3/2 - 3/9)',
+'═══════════════════════════════════════',
+'',
+'--- KSS (KingRanch/Nocona Sustaining & SWAT) ---',
+'',
+`• KSS-922 [In Progress] [Low]`,
+`  [BZ-11807] Redfish property changes after BMC upgrade (107 to 108) with preserve`,
+`  Assignee: Neil Liu | Updated: 3/9`,
+`  🔗 ${JIRA}/KSS-922`,
+'',
+`• KSS-960 [In Progress] [Low]`,
+`  [ADO-1368446] DFM 152TB Stack Test Validation Issue with IPMI`,
+`  Assignee: JoeChen | Updated: 3/9`,
+`  🔗 ${JIRA}/KSS-960`,
+'',
+`• KSS-935 [Fixed] [Low]`,
+`  [BZ-10861] BMC password get reset after AC power cycle`,
+`  Assignee: Leo Chang | Updated: 3/9`,
+`  🔗 ${JIRA}/KSS-935`,
+'',
+`• KSS-961 [To Do] [High] ⚠️`,
+`  [FEATURE] Implement the header to identify the CPLD FW`,
+`  Assignee: VinceChung | Updated: 3/9`,
+`  🔗 ${JIRA}/KSS-961`,
+'',
+`• KSS-937 [To Do] [Low]`,
+`  [FEATURE] 25B2 Dual U55C bifurcation`,
+`  Assignee: Leo Chang | Updated: 3/9`,
+`  🔗 ${JIRA}/KSS-937`,
+'',
+'--- TH5P0 (TH5_Phase0) - 25 items updated ---',
+'  All assigned to Wayne Yang, updated 3/9, status: To Do',
+'',
+`• TH5P0-260 Support authentication in T-1 boot stage  🔗 ${JIRA}/TH5P0-260`,
+`• TH5P0-261 Support attestation on every boot  🔗 ${JIRA}/TH5P0-261`,
+`• TH5P0-262 Support secure boot and signature verification  🔗 ${JIRA}/TH5P0-262`,
+`• TH5P0-267 Support key cancellation  🔗 ${JIRA}/TH5P0-267`,
+`• TH5P0-268 Support key decommissioning  🔗 ${JIRA}/TH5P0-268`,
+`• TH5P0-269 Support host mailbox register  🔗 ${JIRA}/TH5P0-269`,
+`• TH5P0-270 Support BMC submit boot checkpoint  🔗 ${JIRA}/TH5P0-270`,
+`• TH5P0-271 Support BIOS submit boot checkpoint  🔗 ${JIRA}/TH5P0-271`,
+`• TH5P0-272 Support logging firmware recovery action reason  🔗 ${JIRA}/TH5P0-272`,
+`• TH5P0-273 Support logging last panic reason  🔗 ${JIRA}/TH5P0-273`,
+`• TH5P0-274 Support logging platform state  🔗 ${JIRA}/TH5P0-274`,
+`• TH5P0-275 Support logging recovery failed reasons  🔗 ${JIRA}/TH5P0-275`,
+`• TH5P0-276 Support logging error code for update/auth/debug  🔗 ${JIRA}/TH5P0-276`,
+`• TH5P0-285 Support early power on indicator to reflect PRoT state  🔗 ${JIRA}/TH5P0-285`,
+`• TH5P0-286 Support clean shutdown for PRoT  🔗 ${JIRA}/TH5P0-286`,
+`• TH5P0-287 Support image recovery if PRoT auth fails  🔗 ${JIRA}/TH5P0-287`,
+`• TH5P0-288 Support BMC not auto resetting if staged update  🔗 ${JIRA}/TH5P0-288`,
+`• TH5P0-289 Support update firmware components active and recovery  🔗 ${JIRA}/TH5P0-289`,
+`• TH5P0-290 Support staged update to active region for PRoT  🔗 ${JIRA}/TH5P0-290`,
+`• TH5P0-291 Support staged update and recovery region for PRoT  🔗 ${JIRA}/TH5P0-291`,
+`• TH5P0-292 Support staged update for BIOS triggered by DC power cycle  🔗 ${JIRA}/TH5P0-292`,
+`• TH5P0-293 Support staged update from PRoT triggered by AC cycle  🔗 ${JIRA}/TH5P0-293`,
+`• TH5P0-294 Support staged update for BMC triggered by BMC reset  🔗 ${JIRA}/TH5P0-294`,
+`• TH5P0-295 Support anti-rollback via key cancellation  🔗 ${JIRA}/TH5P0-295`,
+`• TH5P0-296 Support anti-rollback via SVN  🔗 ${JIRA}/TH5P0-296`,
+'',
+'═══════════════════════════════════════',
+'',
+'備註：Jira 搜尋範圍為你有權限的所有專案，近 7 天有更新的 issues。',
+'如需更詳細的資訊，請告訴波堤 😸',
+'',
+'Best regards,',
+'波堤 😸 (AI Secretary)'
+].join('\r\n');
+
+const encodedSubject = '=?UTF-8?B?' + Buffer.from(subject, 'utf8').toString('base64') + '?=';
+
+const raw = [
+  'MIME-Version: 1.0',
+  'Content-Type: text/plain; charset=UTF-8',
+  'Content-Transfer-Encoding: base64',
+  'From: ' + from,
+  'To: ' + to,
+  'Subject: ' + encodedSubject,
+  '',
+  Buffer.from(body, 'utf8').toString('base64')
+].join('\r\n');
+
+const b64url = Buffer.from(raw).toString('base64')
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+  .replace(/=+$/, '');
+
+console.log(b64url);
