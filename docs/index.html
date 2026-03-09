@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyKiroHero - High-Level Design</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --purple: #bc8cff;
+  --orange: #f0883e;
+  --pink: #f778ba;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; line-height:1.6; }
+.container { max-width:1100px; margin:0 auto; padding:2rem 1.5rem; }
+h1 { font-size:2.4rem; text-align:center; margin-bottom:.3rem; }
+h1 span { color:var(--accent); }
+.subtitle { text-align:center; color:var(--muted); font-size:1.1rem; margin-bottom:2.5rem; }
+h2 { font-size:1.5rem; color:var(--accent); margin:2.5rem 0 1rem; padding-bottom:.5rem; border-bottom:1px solid var(--border); }
+h3 { font-size:1.15rem; color:var(--purple); margin:1.5rem 0 .5rem; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.5rem; margin-bottom:1.2rem; }
+.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:.8rem; font-weight:600; margin-right:6px; }
+.badge-green { background:#1a3a2a; color:var(--green); }
+.badge-blue { background:#1a2a3a; color:var(--accent); }
+.badge-purple { background:#2a1a3a; color:var(--purple); }
+.badge-orange { background:#3a2a1a; color:var(--orange); }
+.badge-pink { background:#3a1a2a; color:var(--pink); }
+table { width:100%; border-collapse:collapse; margin:1rem 0; }
+th,td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); }
+th { color:var(--accent); font-weight:600; }
+code { background:#1a2332; padding:2px 6px; border-radius:4px; font-size:.9em; color:var(--green); }
+.mermaid { background:var(--card); border-radius:10px; padding:1.5rem; margin:1rem 0; text-align:center; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1rem; }
+.tech-list { list-style:none; }
+.tech-list li { padding:6px 0; border-bottom:1px solid var(--border); }
+.tech-list li:last-child { border:none; }
+.tech-list li::before { content:'▸ '; color:var(--accent); }
+.footer { text-align:center; color:var(--muted); margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--border); font-size:.9rem; }
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🤖 <span>MyKiroHero</span> — HLD</h1>
+<p class="subtitle">AI-Powered WhatsApp Gateway for Kiro IDE</p>
+
+<!-- Overview -->
+<h2>📋 Overview</h2>
+<div class="card">
+<p>MyKiroHero 是一個將 Kiro IDE 的 AI 能力延伸到 WhatsApp 的 Gateway 系統。使用者透過 WhatsApp 發送訊息，Gateway 自動轉發給 Kiro AI 處理，再將回覆送回 WhatsApp。</p>
+<p style="margin-top:.8rem;">
+<span class="badge badge-green">Node.js</span>
+<span class="badge badge-blue">Express</span>
+<span class="badge badge-purple">MCP Protocol</span>
+<span class="badge badge-orange">WhatsApp Web.js</span>
+<span class="badge badge-pink">WebSocket</span>
+</p>
+</div>
+
+<!-- System Architecture -->
+<h2>🏗️ System Architecture</h2>
+<div class="mermaid">
+graph TB
+    subgraph External["📱 External"]
+        WA[WhatsApp User]
+    end
+    subgraph Gateway["⚙️ Gateway Server - Node.js"]
+        SRV[Express Server<br/>REST API]
+        WAA[WhatsApp Adapter<br/>whatsapp-web.js]
+        HB[Heartbeat<br/>Scheduler]
+        MCP[MCP Server<br/>Tool Provider]
+    end
+    subgraph IDE["🔷 Kiro IDE"]
+        REST[REST Control<br/>Extension]
+        AI[Kiro AI<br/>Agent]
+        STEER[Steering Files<br/>Personality]
+    end
+    subgraph Integrations["🔌 Integrations"]
+        GCAL[Google Calendar]
+        GMAIL[Gmail]
+        JIRA[Jira Cloud]
+    end
+
+    WA <-->|Messages| WAA
+    WAA <-->|Events| SRV
+    SRV <-->|HTTP POST| REST
+    REST <-->|Chat| AI
+    AI -->|MCP Tools| MCP
+    MCP -->|send_whatsapp| SRV
+    AI -.->|Reads| STEER
+    HB -->|Triggers| SRV
+    AI <-->|MCP| GCAL
+    AI <-->|MCP| GMAIL
+    AI <-->|MCP| JIRA
+
+    style External fill:#1a2a1a,stroke:#3fb950,color:#e6edf3
+    style Gateway fill:#1a2a3a,stroke:#58a6ff,color:#e6edf3
+    style IDE fill:#2a1a3a,stroke:#bc8cff,color:#e6edf3
+    style Integrations fill:#3a2a1a,stroke:#f0883e,color:#e6edf3
+</div>
+
+<!-- Message Flow -->
+<h2>🔄 Message Flow</h2>
+<div class="mermaid">
+sequenceDiagram
+    participant U as 📱 WhatsApp User
+    participant WA as WhatsApp Adapter
+    participant GW as Gateway Server
+    participant RC as REST Control
+    participant AI as Kiro AI
+
+    U->>WA: Send message
+    WA->>GW: message event
+    GW->>GW: Format with [WhatsApp] prefix
+    GW->>RC: POST /api/chat
+    RC->>AI: Inject into chat
+    AI->>AI: Process with steering context
+    AI->>GW: MCP: send_whatsapp()
+    GW->>WA: Send reply
+    WA->>U: Receive reply
+</div>
+
+<!-- Component Details -->
+<h2>📦 Component Details</h2>
+<div class="grid">
+
+<div class="card">
+<h3>⚙️ Gateway Server</h3>
+<p>Express-based HTTP server，負責所有訊息路由與 API 端點。</p>
+<ul class="tech-list">
+<li>REST API for message relay</li>
+<li>Health check endpoint</li>
+<li>Media file forwarding</li>
+<li>Auto port detection</li>
+</ul>
+<p style="margin-top:.5rem;"><code>src/gateway/server.js</code></p>
+</div>
+
+<div class="card">
+<h3>📱 WhatsApp Adapter</h3>
+<p>使用 whatsapp-web.js 連接 WhatsApp，處理 QR 登入與訊息收發。</p>
+<ul class="tech-list">
+<li>QR code authentication</li>
+<li>Message send/receive</li>
+<li>Media support (images, videos, docs)</li>
+<li>Session persistence</li>
+</ul>
+<p style="margin-top:.5rem;"><code>src/gateway/whatsapp-adapter.js</code></p>
+</div>
+
+<div class="card">
+<h3>🔧 MCP Server</h3>
+<p>Model Context Protocol server，提供 AI 可呼叫的工具。</p>
+<ul class="tech-list">
+<li>send_whatsapp — 發送文字訊息</li>
+<li>send_whatsapp_media — 發送媒體檔案</li>
+<li>get_gateway_status — 健康檢查</li>
+<li>get_weather — 天氣查詢</li>
+<li>list_skills / load_skill — 技能管理</li>
+<li>restart_gateway — 重啟服務</li>
+</ul>
+<p style="margin-top:.5rem;"><code>src/mcp-server.js</code></p>
+</div>
+
+<div class="card">
+<h3>💓 Heartbeat Scheduler</h3>
+<p>讀取 HEARTBEAT.md 排程設定，定時觸發任務。</p>
+<ul class="tech-list">
+<li>Cron-like scheduling via markdown</li>
+<li>Auto-reload every hour</li>
+<li>Memory sync, reminders, weather</li>
+</ul>
+<p style="margin-top:.5rem;"><code>HEARTBEAT.md</code></p>
+</div>
+
+<div class="card">
+<h3>🔷 IDE Handler</h3>
+<p>透過 vscode-rest-control extension 與 Kiro IDE 通訊。</p>
+<ul class="tech-list">
+<li>HTTP POST to inject chat messages</li>
+<li>Port auto-discovery (workspace hash)</li>
+<li>Pluggable handler architecture</li>
+<li>Future: Cursor/Windsurf support</li>
+</ul>
+<p style="margin-top:.5rem;"><code>src/gateway/handlers/kiro-handler.js</code></p>
+</div>
+
+<div class="card">
+<h3>🎭 Steering Files</h3>
+<p>Markdown-based AI personality & memory system。</p>
+<ul class="tech-list">
+<li>SOUL.md — AI identity & personality</li>
+<li>USER.md — User preferences</li>
+<li>MEMORY.md — Long-term memory</li>
+<li>AGENTS.md — Behavior rules</li>
+<li>HEARTBEAT.md — Scheduled tasks</li>
+</ul>
+<p style="margin-top:.5rem;"><code>.kiro/steering/</code></p>
+</div>
+
+</div>
+
+<!-- Layered Architecture -->
+<h2>🧱 Layered Architecture</h2>
+<div class="card">
+<div class="mermaid">
+graph LR
+    subgraph Universal["🌐 Universal Layer"]
+        G[Gateway Server]
+        API[REST API]
+        WA2[WhatsApp Adapter]
+        MCP2[MCP Server]
+        HND[Handler Abstraction]
+    end
+    subgraph KiroLayer["🔷 Kiro-Specific Layer"]
+        KH[kiro-handler.js]
+        ST[Steering Files]
+        MCFG[mcp.json config]
+        EXT[REST Control Extension]
+    end
+    Universal --> KiroLayer
+    style Universal fill:#1a2a3a,stroke:#58a6ff,color:#e6edf3
+    style KiroLayer fill:#2a1a3a,stroke:#bc8cff,color:#e6edf3
+</div>
+<p style="margin-top:1rem;color:var(--muted);">Universal Layer 可搭配任何 AI IDE 使用。只需替換 Kiro-Specific Layer 即可支援 Cursor、Windsurf 等工具。</p>
+</div>
+
+<!-- Tech Stack -->
+<h2>🛠️ Tech Stack</h2>
+<div class="grid">
+<div class="card">
+<h3>Runtime & Framework</h3>
+<ul class="tech-list">
+<li><strong>Node.js</strong> 18+ — Runtime</li>
+<li><strong>Express</strong> 4.x — HTTP Server</li>
+<li><strong>whatsapp-web.js</strong> 1.26 — WhatsApp Client</li>
+<li><strong>ws</strong> 8.x — WebSocket</li>
+</ul>
+</div>
+<div class="card">
+<h3>AI & Integrations</h3>
+<ul class="tech-list">
+<li><strong>@modelcontextprotocol/sdk</strong> — MCP Protocol</li>
+<li><strong>Google Calendar MCP</strong> — 行事曆整合</li>
+<li><strong>Gmail MCP</strong> — 郵件整合</li>
+<li><strong>Jira MCP</strong> — 專案管理整合</li>
+</ul>
+</div>
+<div class="card">
+<h3>DevOps & Tools</h3>
+<ul class="tech-list">
+<li><strong>PM2</strong> — Process Manager</li>
+<li><strong>dotenv</strong> — Environment Config</li>
+<li><strong>chalk</strong> — Terminal Styling</li>
+<li><strong>qrcode-terminal</strong> — QR Code Display</li>
+</ul>
+</div>
+</div>
+
+<!-- MCP Tools -->
+<h2>🔌 MCP Tools</h2>
+<div class="card">
+<table>
+<tr><th>Tool</th><th>Description</th><th>Parameters</th></tr>
+<tr><td><code>send_whatsapp</code></td><td>發送 WhatsApp 文字訊息</td><td>chatId, message</td></tr>
+<tr><td><code>send_whatsapp_media</code></td><td>發送媒體檔案（圖片、影片等）</td><td>chatId, filePath, caption</td></tr>
+<tr><td><code>get_gateway_status</code></td><td>查詢 Gateway 健康狀態</td><td>—</td></tr>
+<tr><td><code>list_skills</code></td><td>列出所有可用 Agent Skills</td><td>—</td></tr>
+<tr><td><code>load_skill</code></td><td>載入指定 Skill 內容</td><td>name</td></tr>
+<tr><td><code>get_weather</code></td><td>查詢天氣（via wttr.in）</td><td>location</td></tr>
+<tr><td><code>restart_gateway</code></td><td>重啟 Gateway（需 PM2）</td><td>—</td></tr>
+</table>
+</div>
+
+<!-- API Endpoints -->
+<h2>📡 API Endpoints</h2>
+<div class="card">
+<table>
+<tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/reply</code></td><td><span class="badge badge-green">POST</span></td><td>發送文字訊息到 WhatsApp</td></tr>
+<tr><td><code>/api/reply/media</code></td><td><span class="badge badge-green">POST</span></td><td>發送媒體檔案到 WhatsApp</td></tr>
+<tr><td><code>/api/health</code></td><td><span class="badge badge-blue">GET</span></td><td>Gateway 健康檢查</td></tr>
+</table>
+</div>
+
+<!-- File Structure -->
+<h2>📁 File Structure</h2>
+<div class="card">
+<pre style="color:var(--green);font-size:.9rem;line-height:1.8;overflow-x:auto;">
+MyKiroHero/
+├── src/
+│   ├── gateway/
+│   │   ├── index.js              # Entry point
+│   │   ├── server.js             # Express server &amp; API
+│   │   ├── config.js             # Configuration loader
+│   │   ├── whatsapp-adapter.js   # WhatsApp client
+│   │   ├── telegram-adapter.js   # Telegram client (future)
+│   │   └── handlers/
+│   │       ├── index.js          # Handler registry
+│   │       ├── base-handler.js   # Abstract handler
+│   │       └── kiro-handler.js   # Kiro IDE handler
+│   ├── skills/
+│   │   └── skill-loader.js       # Skill management
+│   └── mcp-server.js             # MCP tool server
+├── .kiro/steering/
+│   ├── SOUL.md                   # AI personality
+│   ├── USER.md                   # User preferences
+│   ├── MEMORY.md                 # Long-term memory
+│   ├── AGENTS.md                 # Behavior rules
+│   └── HEARTBEAT.md              # Scheduled tasks
+├── templates/
+│   ├── steering-en/              # English templates
+│   └── steering-zh/              # Chinese templates
+├── memory/                       # Daily activity logs
+├── install.js                    # Interactive installer
+├── package.json
+└── .env                          # Environment config
+</pre>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+<p>MyKiroHero — Built with ❤️ in Taiwan</p>
+<p style="margin-top:.3rem;">
+<a href="https://github.com/JoeLiang2022/MyKiroHero">GitHub</a> ·
+<a href="https://github.com/NorlWu-TW/MyKiroHero">Original Repo</a>
+</p>
+</div>
+
+</div>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#1a2a3a',
+    primaryTextColor: '#e6edf3',
+    primaryBorderColor: '#58a6ff',
+    lineColor: '#58a6ff',
+    secondaryColor: '#2a1a3a',
+    tertiaryColor: '#1a3a2a'
+  }
+});
+</script>
+</body>
+</html>
